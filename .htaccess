@@ -1,0 +1,31 @@
+RewriteEngine On
+RewriteBase /trip/ibcctrip/
+
+# 1. Allow direct access to existing directories
+RewriteRule ^(api|backend|admin|uploads|assets|css|js|images|core|database|components|layouts|locales|views) - [L]
+
+# 2. Redirect /admin to the admin dashboard
+RewriteRule ^admin/?$ admin/dashboard.php [L]
+
+# 3. Remove .php extension from URL
+# Example: /trips => trips.php
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}\.php -f
+RewriteRule ^([^\.]+)$ $1.php [NC,L]
+
+# 4. Redirect index.php to root /
+RewriteRule ^index\.php$ ./ [R=301,L]
+
+# 5. Handle default index
+DirectoryIndex index.php
+
+# 6. Custom Error 404
+ErrorDocument 404 /trip/ibcctrip/index.php?error=404
+
+# 7. Security - Prevent listing directories
+Options -Indexes
+
+# 6. Gzip Compression for assets
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>

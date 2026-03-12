@@ -1,0 +1,25 @@
+# Apache RewriteEngine for IBCC Trip Backend API
+Options -Indexes
+
+RewriteEngine On
+
+# Allow direct API calls
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# Security headers
+Header always set X-Content-Type-Options "nosniff"
+Header always set X-Frame-Options "SAMEORIGIN"
+Header always set X-XSS-Protection "1; mode=block"
+Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+# Block sensitive files
+<FilesMatch "\.(env|log|sql|bak|sh|git)$">
+  Order Allow,Deny
+  Deny from all
+</FilesMatch>
+
+# No caching for API responses
+<FilesMatch "\.php$">
+  Header set Cache-Control "no-store, no-cache, must-revalidate"
+</FilesMatch>
