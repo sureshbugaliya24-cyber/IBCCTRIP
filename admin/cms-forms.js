@@ -51,6 +51,26 @@ window.previewImage = function(input, prevId, placeId) {
     }
 };
 
+window.filterStates = function(countryId) {
+    const sSelect = document.getElementById('t-sid');
+    const filtered = globals.states.filter(s => !countryId || s.country_id == countryId);
+    sSelect.innerHTML = buildSel(filtered, '');
+    filterCities(''); // Reset child
+};
+
+window.filterCities = function(stateId) {
+    const cSelect = document.getElementById('t-cityid');
+    const filtered = globals.cities.filter(c => !stateId || c.state_id == stateId);
+    cSelect.innerHTML = buildSel(filtered, '');
+    filterPlaces(''); // Reset child
+};
+
+window.filterPlaces = function(cityId) {
+    const pSelect = document.getElementById('t-plid');
+    const filtered = (globals.places || []).filter(p => !cityId || p.city_id == cityId);
+    pSelect.innerHTML = buildSel(filtered, '');
+};
+
 /* ============================================================
    TRIPS
    ============================================================ */
@@ -75,10 +95,10 @@ window.renderTripForm = function(t={}) {
 
     ${sec('📍','Location')}
     <div class="grid grid-cols-4 gap-3">
-      ${fldWrap('Country',sel('t-cid',buildSel(globals.countries,t.country_id)))}
-      ${fldWrap('State',sel('t-sid',buildSel(globals.states,t.state_id)))}
-      ${fldWrap('City',sel('t-cityid',buildSel(globals.cities,t.city_id)))}
-      ${fldWrap('Place',sel('t-plid',buildSel(globals.places||[],t.place_id)))}
+      ${fldWrap('Country', `<select id="t-cid" onchange="filterStates(this.value)" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.countries, t.country_id)}</select>`)}
+      ${fldWrap('State', `<select id="t-sid" onchange="filterCities(this.value)" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.states.filter(s => !t.country_id || s.country_id == t.country_id), t.state_id)}</select>`)}
+      ${fldWrap('City', `<select id="t-cityid" onchange="filterPlaces(this.value)" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.cities.filter(c => !t.state_id || c.state_id == t.state_id), t.city_id)}</select>`)}
+      ${fldWrap('Place', `<select id="t-plid" class="w-full border rounded-lg p-2 text-sm">${buildSel((globals.places || []).filter(p => !t.city_id || p.city_id == t.city_id), t.place_id)}</select>`)}
     </div></div>
 
     ${sec('🖼️','Featured Images')}
@@ -110,13 +130,14 @@ window.renderTripForm = function(t={}) {
       ${(t.gallery||[]).map(g=>`
         <div class="relative w-20 h-20 group rounded-xl overflow-hidden border bg-gray-50 flex items-center justify-center shadow-sm" data-gid="${g.id}">
             <img src="${g.image_url}" class="w-full h-full object-cover">
-            <button type="button" onclick="delGalleryImg(${g.id},this)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] font-bold flex items-center justify-center shadow-md">✕</button>
+            <button type="button" onclick="delGalleryImg(${g.id},this)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] font-bold flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
         </div>`).join('')}
-      <button type="button" onclick="document.getElementById('t-gallery').click()" class="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center hover:bg-gray-50 transition-colors group">
+      <button type="button" onclick="${id ? "document.getElementById('t-gallery').click()" : "Utils.toast('Please save the trip first to add gallery images','info')"}" 
+              class="w-20 h-20 border-2 border-dashed border-gray-200 rounded-xl flex flex-col items-center justify-center hover:bg-gray-50 transition-colors group">
           <span class="text-xl text-gray-300 group-hover:text-primary">+</span>
           <span class="text-[9px] text-gray-400 font-bold uppercase group-hover:text-primary">Add</span>
       </button>
-      <input type="file" id="t-gallery" multiple accept="image/*" class="hidden" onchange="Utils.toast('Images selected for upload')">
+      <input type="file" id="t-gallery" multiple accept="image/*" class="hidden" onchange="uploadGalleryImg(this, ${id})">
     </div></div>
 
     ${sec('🎥','Videos')}
@@ -157,9 +178,55 @@ window.addItnDay = function() {
 
 window.delGalleryImg = async function(gid, btn) {
     if(!confirm('Remove this image?')) return;
-    const r = await fetch(`/trip/ibcctrip/backend/api/admin.php?resource=trip_gallery&action=delete&id=${gid}`, {credentials:'include'}).then(r=>r.json());
+    const r = await fetch(`${IBCC.BASE}/admin.php?resource=trip_gallery&action=delete&id=${gid}`, {credentials:'include'}).then(r=>r.json());
     if(r?.success) btn.closest('[data-gid]').remove();
     else Utils.toast('Failed to delete', 'error');
+};
+
+window.uploadGalleryImg = async function(input, tripId) {
+    if (!tripId) return Utils.toast('Save trip first', 'info');
+    if (!input.files || input.files.length === 0) return;
+
+    const grid = document.getElementById('t-gallery-grid');
+    const addBtn = grid.querySelector('button[onclick*="t-gallery"]');
+    
+    for (let i = 0; i < input.files.length; i++) {
+        const file = input.files[i];
+        const formData = new FormData();
+        formData.append('file', file);
+
+        // Show temporary box/loader
+        const tempId = 'temp-' + Math.random().toString(36).substr(2, 9);
+        const tempBox = document.createElement('div');
+        tempBox.id = tempId;
+        tempBox.className = "relative w-20 h-20 group rounded-xl overflow-hidden border bg-gray-50 flex items-center justify-center shadow-sm animate-pulse";
+        tempBox.innerHTML = `<span class="text-[10px] text-gray-400 font-bold uppercase">Uploading...</span>`;
+        grid.insertBefore(tempBox, addBtn);
+
+        try {
+            const r = await fetch(`${IBCC.BASE}/admin.php?resource=trip_gallery&action=upload&id=${tripId}`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            }).then(r => r.json());
+
+            if (r?.success) {
+                tempBox.classList.remove('animate-pulse');
+                tempBox.setAttribute('data-gid', r.data.id);
+                tempBox.innerHTML = `
+                    <img src="${r.data.image_url}" class="w-full h-full object-cover">
+                    <button type="button" onclick="delGalleryImg(${r.data.id},this)" class="absolute top-1 right-1 bg-red-500 text-white rounded-full w-4 h-4 text-[10px] font-bold flex items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity">✕</button>
+                `;
+            } else {
+                Utils.toast(r?.message || 'Upload failed', 'error');
+                tempBox.remove();
+            }
+        } catch (err) {
+            console.error(err);
+            tempBox.remove();
+        }
+    }
+    input.value = ''; // Reset input
 };
 
 window.saveTrip = async function(e, id) {
@@ -197,8 +264,8 @@ window.saveTrip = async function(e, id) {
 
     const ci=document.getElementById('t-image'); if(ci?.files[0]) d.append('cover_image',ci.files[0]);
     const mi=document.getElementById('t-mapimg'); if(mi?.files[0]) d.append('map_image',mi.files[0]);
-    const gf=document.getElementById('t-gallery').files;
-    for(let i=0;i<gf.length;i++) d.append('gallery_images[]',gf[i]);
+    
+    // Gallery images are now uploaded in real-time
 
     const r = id ? await API.admin.updateTrip(id,d,true) : await API.admin.createTrip(d,true);
     btn.textContent=og; btn.disabled=false;
@@ -340,7 +407,7 @@ window.saveDest = async function(e, id, type) {
 let currentUsers = [];
 
 window.loadUsers = async function() {
-    const r = await fetch('/trip/ibcctrip/backend/api/admin.php?resource=users&action=list', {credentials:'include'}).then(r=>r.json());
+    const r = await fetch(`${IBCC.BASE}/admin.php?resource=users&action=list`, {credentials:'include'}).then(r=>r.json());
     currentUsers = r?.data || [];
     const html = `
     <div class="mb-4 flex justify-end">
@@ -388,7 +455,7 @@ window.saveUser = async function(e, id) {
     const gv=x=>(document.getElementById(x)||{}).value||'';
     const body={full_name:gv('u-name'),email:gv('u-email'),phone:gv('u-phone'),role:gv('u-role'),is_active:gv('u-active')};
     const pw=gv('u-pass'); if(pw) body.password=pw;
-    const endpoint = `/trip/ibcctrip/backend/api/admin.php?resource=users&action=${id?'update&id='+id:'create'}`;
+    const endpoint = `${IBCC.BASE}/admin.php?resource=users&action=${id?'update&id='+id:'create'}`;
     const r = await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(body)}).then(r=>r.json());
     btn.textContent=og; btn.disabled=false;
     if(r?.success){Utils.toast('Saved!'); CRUD.close(); loadUsers();}
@@ -399,12 +466,48 @@ window.toggleUserStatus = async function(id, current) {
     const newStatus = current ? 0 : 1;
     const label = newStatus ? 'activate' : 'deactivate';
     if(!confirm(`Are you sure you want to ${label} this user?`)) return;
-    const r = await fetch(`/trip/ibcctrip/backend/api/admin.php?resource=users&action=update&id=${id}`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({is_active:newStatus})}).then(r=>r.json());
+    const r = await fetch(`${IBCC.BASE}/admin.php?resource=users&action=update&id=${id}`,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify({is_active:newStatus})}).then(r=>r.json());
     if(r?.success){Utils.toast('Updated!'); loadUsers();}
     else Utils.toast(r?.message||'Error','error');
 };
 
 /* ============================================================
-   HELPER
+   TESTIMONIALS
    ============================================================ */
+window.renderTestimonialForm = function(t={}) {
+    const id = t.id||null;
+    const ratings = [1,2,3,4,5].map(r => `<option value="${r}" ${t.rating==r?'selected':''}>${r} Stars</option>`).join('');
+    return `<form onsubmit="saveTestimonial(event,${id})" class="space-y-4">
+    <div class="grid grid-cols-2 gap-4">
+        ${fldWrap('Full Name *', inp('t-name', t.name||'', 'text', 'Customer Name'))}
+        ${fldWrap('Role / City', inp('t-role', t.role||'', 'text', 'e.g. Delhi or Traveler'))}
+        ${fldWrap('Rating', sel('t-rating', ratings))}
+        ${fldWrap('Status', sel('t-status', `<option value="Published" ${t.status==='Published'?'selected':''}>Published</option><option value="Draft" ${t.status==='Draft'?'selected':''}>Draft</option>`))}
+    </div>
+    <div>${fldLabel('Comment *')}${tx('t-comm', t.comment||'', 4, 'What did the traveler say?')}</div>
+    <div>${fldLabel('User Photo')}${renderImagePicker('t-user-img', t.image)}</div>
+    <button type="submit" class="w-full bg-secondary text-white font-bold py-3 rounded-xl mt-2">${id?'Update':'Create'} Testimonial</button>
+    </form>`;
+};
+
+window.saveTestimonial = async function(e, id) {
+    e.preventDefault();
+    const btn=e.target.querySelector('[type="submit"]');
+    const og=btn.textContent; btn.textContent='Saving…'; btn.disabled=true;
+    const gv=x=>(document.getElementById(x)||{}).value||'';
+    const fd = new FormData();
+    fd.append('name', gv('t-name')); fd.append('role', gv('t-role'));
+    fd.append('rating', gv('t-rating')); fd.append('status', gv('t-status'));
+    fd.append('comment', gv('t-comm'));
+    const f=document.getElementById('t-user-img'); if(f?.files[0]) fd.append('image', f.files[0]);
+    
+    const r = id ? await API.admin.updateTestimonial(id, fd) : await API.admin.createTestimonial(fd);
+    btn.textContent=og; btn.disabled=false;
+    if(r?.success){Utils.toast('Saved!'); CRUD.close(); loadTestimonials();}
+    else Utils.toast(r?.message||'Error','error');
+};
+
+/**
+ * HELPER
+ */
 function esc(str){ return String(str).replace(/"/g,'&quot;').replace(/</g,'&lt;'); }

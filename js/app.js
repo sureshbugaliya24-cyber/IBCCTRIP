@@ -4,7 +4,7 @@
  */
 
 const IBCC = {
-    BASE: '/trip/ibcctrip/backend/api',
+    BASE: window.APP_CONFIG?.API_URL || '/ibcctrip/backend/api',
 
     // ---------- HTTP helpers ----------
     async get(endpoint, params = {}) {
@@ -69,6 +69,7 @@ const IBCC = {
         myBookings()       { return IBCC.get('/bookings.php', { action: 'my-bookings' }); },
         invoice(id)        { return IBCC.get('/bookings.php', { action: 'invoice', id }); },
         cancel(id)         { return IBCC.get('/bookings.php', { action: 'cancel', id }); },
+        verifyPayment(data) { return IBCC.post('/bookings.php?action=verify-payment', data); },
     },
 
     // ---------- Blogs ----------
@@ -91,8 +92,16 @@ const IBCC = {
         place(slug)                    { return IBCC.get('/locations.php', { action: 'place', slug }); },
     },
 
+    // ---------- Testimonials & Stats ----------
+    testimonials: {
+        list(limit)  { return IBCC.get('/testimonials.php', { limit }); },
+        stats()      { return IBCC.get('/testimonials.php', { action: 'stats' }); }
+    },
+
     // ---------- Contact ----------
-    contact(data) { return IBCC.post('/contact.php', data); },
+    contact: {
+        submit(data) { return IBCC.post('/contact.php', data); }
+    },
 
     // ---------- Admin ----------
     admin: {
@@ -104,8 +113,25 @@ const IBCC = {
         updateTrip(id, data){ return IBCC.put('/admin.php?resource=trips&action=update&id=' + id, data); },
         deleteTrip(id)      { return IBCC.get('/admin.php', { resource: 'trips', action: 'delete', id }); },
         
+        getTestimonials()     { return IBCC.get('/admin.php', { resource: 'testimonials', action: 'list' }); },
+        createTestimonial(fd) { return IBCC.post('/admin.php?resource=testimonials&action=create', fd); },
+        updateTestimonial(id, fd) { return IBCC.post('/admin.php?resource=testimonials&action=update&id=' + id, fd); },
+        deleteTestimonial(id) { return IBCC.get('/admin.php', { resource: 'testimonials', action: 'delete', id }); },
+
+        getSiteStats()        { return IBCC.get('/admin.php', { resource: 'site_stats', action: 'list' }); },
+        updateSiteStat(id, data) { return IBCC.put('/admin.php?resource=site_stats&action=update&id=' + id, data); },
+
+        getSiteSettings() { return IBCC.get('/admin.php', { resource: 'site_settings', action: 'list' }); },
+        updateSiteSettings(data) { return IBCC.post('/admin.php?resource=site_settings&action=update', { settings: data }); },
+
         getBookings(params) { return IBCC.get('/admin.php', { resource: 'bookings', action: 'list', ...params }); },
         updateBooking(id, status) { return IBCC.put('/admin.php?resource=bookings&action=update-status&id=' + id, { status }); },
+        deleteBooking(id) { return IBCC.get('/admin.php', { resource: 'bookings', action: 'delete', id }); },
+
+        getMessages(params)   { return IBCC.get('/admin.php', { resource: 'messages', action: 'list', ...params }); },
+        updateMessage(id, data) { return IBCC.post('/admin.php?resource=messages&action=update&id=' + id, data); },
+        markMessageRead(id) { return IBCC.get('/admin.php', { resource: 'messages', action: 'mark-read', id }); },
+        deleteMessage(id)   { return IBCC.get('/admin.php', { resource: 'messages', action: 'delete', id }); },
         
         getCustomers(params){ return IBCC.get('/admin.php', { resource: 'customers', action: 'list', ...params }); },
         
@@ -129,13 +155,16 @@ const Session = {
             const r = await IBCC.auth.session();
             if (r?.data?.logged_in) {
                 this.user = r.data;
+            } else if (r?.data) {
+                // Not logged in, but we still get public data like active_payments
+                this.user = { logged_in: false, active_payments: r.data.active_payments || [] };
             }
         } catch (_) {}
         this.updateNavbar();
         return this.user;
     },
-    isLoggedIn() { return !!this.user; },
-    isAdmin()    { return this.user?.role === 'admin'; },
+    isLoggedIn() { return this.user?.logged_in === true; },
+    isAdmin()    { return this.user?.logged_in === true && this.user?.role === 'admin'; },
     async logout() {
         await IBCC.auth.logout();
         this.user = null;
@@ -152,38 +181,34 @@ const Session = {
         const mAvatarEl     = document.getElementById('mobile-avatar');
         const mDashBtn      = document.getElementById('mobile-dashboard-btn');
 
-        if (this.user) {
+        if (this.isLoggedIn()) {
             const firstName = this.user.name.split(' ')[0];
             const dashLink = this.isAdmin() ? dashboardBtn?.href.replace('/dashboard', '/admin/dashboard.php') : dashboardBtn?.href.replace('/admin/dashboard.php', '/dashboard.php');
             
             // Desktop
-            loginBtn     && (loginBtn.style.display     = 'none');
+            if (loginBtn) loginBtn.style.display = 'none';
             if (dashboardBtn) {
-                dashboardBtn.style.display = 'inline-flex';
+                dashboardBtn.style.display = 'flex';
                 dashboardBtn.href = dashLink || dashboardBtn.href;
             }
-            userNameEl   && (userNameEl.textContent     = firstName);
+            if (userNameEl) userNameEl.textContent = firstName;
             const navAvatar = document.getElementById('nav-avatar');
             if (navAvatar) navAvatar.textContent = this.user.name[0].toUpperCase();
-            const sideAvatar = document.getElementById('side-avatar');
-            if (sideAvatar) sideAvatar.textContent = this.user.name[0].toUpperCase();
             
             // Mobile
-            mLoginBtn    && (mLoginBtn.style.display    = 'none');
-            mUserWrap    && (mUserWrap.classList.remove('hidden'));
-            mNameEl      && (mNameEl.textContent        = this.user.name);
-            mAvatarEl    && (mAvatarEl.textContent      = this.user.name[0].toUpperCase());
-            if (mDashBtn && dashLink) {
-                mDashBtn.href = dashLink;
-            }
+            if (mLoginBtn) mLoginBtn.style.display = 'none';
+            if (mUserWrap) mUserWrap.classList.remove('hidden');
+            if (mNameEl) mNameEl.textContent = this.user.name;
+            if (mAvatarEl) mAvatarEl.textContent = this.user.name[0].toUpperCase();
+            if (mDashBtn && dashLink) mDashBtn.href = dashLink;
         } else {
             // Desktop
-            loginBtn     && (loginBtn.style.display     = 'inline-flex');
-            dashboardBtn && (dashboardBtn.style.display = 'none');
+            if (loginBtn) loginBtn.style.display = 'inline-block';
+            if (dashboardBtn) dashboardBtn.style.display = 'none';
             
             // Mobile
-            mLoginBtn    && (mLoginBtn.style.display    = 'block');
-            mUserWrap    && (mUserWrap.classList.add('hidden'));
+            if (mLoginBtn) mLoginBtn.style.display = 'block';
+            if (mUserWrap) mUserWrap.classList.add('hidden');
         }
     }
 };

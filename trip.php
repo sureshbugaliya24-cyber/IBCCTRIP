@@ -355,6 +355,27 @@ require_once __DIR__ . '/layouts/header.php';
                 </div>
               </div>
 
+              <!-- Contact Info -->
+              <div class="space-y-3 pt-2">
+                <div>
+                  <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name *</label>
+                  <input id="b-name" type="text" required placeholder="Enter your full name"
+                         class="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Email Address *</label>
+                    <input id="b-email" type="email" required placeholder="Email"
+                           class="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary">
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Phone Number *</label>
+                    <input id="b-phone" type="tel" required placeholder="Phone"
+                           class="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary">
+                  </div>
+                </div>
+              </div>
+
               <div class="bg-blue-50 rounded-xl p-3 border border-blue-100 mt-2">
                 <div class="flex justify-between text-xs">
                   <span class="text-gray-600">Price × Travelers (<span id="member-count">2</span>)</span>
@@ -362,13 +383,26 @@ require_once __DIR__ . '/layouts/header.php';
                 </div>
               </div>
 
-              <div>
+
+              <!-- Special Requests -->
+              <div class="pt-2">
                 <label class="block text-xs font-bold text-gray-500 uppercase mb-1">Special Requests</label>
                 <textarea id="b-notes" rows="2" placeholder="Dietary, accessibility..."
                           class="w-full border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-primary resize-none"></textarea>
               </div>
 
-              <div id="b-error" class="hidden bg-red-50 text-red-700 rounded-xl px-3 py-2 text-xs"></div>
+              <!-- Payment Method Selection -->
+              <div id="payment-selection" class="space-y-3 pt-3">
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Select Payment Method</label>
+                <div class="grid grid-cols-2 gap-3" id="payment-options">
+                  <!-- Will be populated by JS -->
+                  <div class="col-span-2 py-4 text-center border-2 border-dashed border-gray-100 rounded-2xl text-gray-400 text-xs">
+                    Detecting payment providers...
+                  </div>
+                </div>
+              </div>
+
+              <div id="b-error" class="hidden bg-red-50 text-red-700 rounded-xl px-3 py-2 text-xs mt-3"></div>
 
               <button type="submit" id="b-submit"
                       class="w-full bg-secondary text-white font-extrabold py-3.5 rounded-xl
@@ -487,23 +521,92 @@ function updateTotal() {
 async function submitBooking(e) {
   e.preventDefault();
   const user = await Session.init();
-  if (!user) { window.location.href = '<?= FRONTEND_URL ?>/login.php?redirect=' + encodeURIComponent(window.location.href); return; }
+  if (!user) { 
+    window.location.href = '<?= FRONTEND_URL ?>/login.php?redirect=' + encodeURIComponent(window.location.href); 
+    return; 
+  }
+
+  const selectedMethod = document.querySelector('input[name="payment_method"]:checked')?.value;
+  if (!selectedMethod) {
+    Utils.toast('Please select a payment method', 'error');
+    return;
+  }
+
   const btn   = document.getElementById('b-submit');
   const errEl = document.getElementById('b-error');
   errEl.classList.add('hidden');
-  btn.textContent = 'Confirming...'; btn.disabled = true;
-  const r = await IBCC.bookings.create({
-    trip_id:     TRIP_ID,
-    start_date:  document.getElementById('b-start').value,
-    num_members: parseInt(document.getElementById('b-members').value),
-    special_requests: document.getElementById('b-notes').value,
-  });
-  btn.textContent = 'Confirm Booking 🎉'; btn.disabled = false;
-  if (r?.success) {
-    Utils.toast('🎉 Booking confirmed! Redirecting to dashboard...');
-    setTimeout(() => window.location.href = '<?= FRONTEND_URL ?>/dashboard.php', 2000);
-  } else {
-    errEl.textContent = r?.message || 'Booking failed. Please try again.';
+  const originalBtnText = btn.textContent;
+  btn.textContent = 'Processing...'; btn.disabled = true;
+
+  try {
+    const bookingData = {
+      trip_id:     TRIP_ID,
+      start_date:  document.getElementById('b-start').value,
+      num_members: parseInt(document.getElementById('b-members').value),
+      full_name:   document.getElementById('b-name').value,
+      email:      document.getElementById('b-email').value,
+      phone:      document.getElementById('b-phone').value,
+      special_notes: document.getElementById('b-notes').value,
+      payment_method: selectedMethod
+    };
+
+    const r = await IBCC.bookings.create(bookingData);
+
+    if (!r?.success) {
+      throw new Error(r?.message || 'Booking failed');
+    }
+
+    const data = r.data;
+
+    if (selectedMethod === 'Razorpay' && data.razorpay_order_id) {
+        // Razorpay Checkout
+        const options = {
+            key: data.razorpay_key,
+            amount: data.total_price * 100, // in paise
+            currency: 'INR',
+            name: 'IBCC Trip',
+            description: 'Booking for ' + data.trip_title,
+            order_id: data.razorpay_order_id,
+            handler: async function (response) {
+                btn.textContent = 'Verifying...';
+                const v = await IBCC.bookings.verifyPayment({
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_signature: response.razorpay_signature
+                });
+                
+                if (v?.success) {
+                    Utils.toast('🎉 Payment successful! Booking confirmed.');
+                    setTimeout(() => window.location.href = '<?= FRONTEND_URL ?>/dashboard.php', 2000);
+                } else {
+                    Utils.toast(v?.message || 'Payment verification failed', 'error');
+                    btn.textContent = originalBtnText; btn.disabled = false;
+                }
+            },
+            prefill: {
+                name: bookingData.full_name,
+                email: bookingData.email,
+                contact: bookingData.phone
+            },
+            theme: { color: '<?= COLOR_PRIMARY ?>' },
+            modal: {
+                ondismiss: function() {
+                    btn.textContent = originalBtnText; btn.disabled = false;
+                    Utils.toast('Payment cancelled', 'info');
+                }
+            }
+        };
+        const rzp = new Razorpay(options);
+        rzp.open();
+    } else {
+        // COD or other non-online flows
+        Utils.toast('🎉 Booking received! Please pay on arrival.');
+        setTimeout(() => window.location.href = '<?= FRONTEND_URL ?>/dashboard.php', 2000);
+    }
+
+  } catch (err) {
+    btn.textContent = originalBtnText; btn.disabled = false;
+    errEl.textContent = err.message || 'Booking failed. Please try again.';
     errEl.classList.remove('hidden');
   }
 }
@@ -527,8 +630,56 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (user) {
     document.getElementById('nav-login').style.display = 'none';
     document.getElementById('nav-dashboard').style.display = 'flex';
+    
+    // Pre-fill booking form
+    const nameEl  = document.getElementById('b-name');
+    const emailEl = document.getElementById('b-email');
+    const phoneEl = document.getElementById('b-phone');
+    if (nameEl && user.name)  nameEl.value  = user.name;
+    if (emailEl && user.email) emailEl.value = user.email;
+    
+    // If phone is missing from session, fetch full profile
+    if (!user.phone) {
+        const fullUser = await IBCC.auth.me();
+        if (fullUser?.success && phoneEl) {
+            phoneEl.value = fullUser.data.phone || '';
+        }
+    } else if (phoneEl) {
+        phoneEl.value = user.phone;
+    }
+  }
+
+  // Setup Payments UI (Always show available methods, even if not logged in yet)
+  const payOptions = document.getElementById('payment-options');
+  const submitBtn  = document.getElementById('b-submit');
+  const userData   = await Session.init(); // Reuse session init (cached in object)
+  const activePayments = userData?.active_payments || [];
+  
+  if (activePayments.length === 0) {
+      if (payOptions) {
+          payOptions.innerHTML = `
+              <div class="col-span-2 p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100 text-[10px] font-bold uppercase tracking-tight text-center">
+                  ⚠️ Online booking is temporarily disabled. Please contact us to book.
+              </div>`;
+      }
+      if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+          submitBtn.textContent = 'Booking Unavailable';
+      }
+  } else if (payOptions) {
+      payOptions.innerHTML = activePayments.map((p, idx) => `
+          <label class="cursor-pointer group">
+              <input type="radio" name="payment_method" value="${p}" class="hidden peer" ${idx === 0 ? 'checked' : ''}>
+              <div class="p-4 border-2 border-gray-100 rounded-2xl flex flex-col items-center gap-2 group-hover:border-primary/20 peer-checked:border-primary peer-checked:bg-primary/5 transition-all">
+                  <span class="text-xl">${p === 'Razorpay' ? '💳' : '💵'}</span>
+                  <span class="text-[10px] font-black uppercase tracking-widest text-gray-500 peer-checked:text-primary">${p === 'Razorpay' ? 'Pay Online' : 'Cash (COD)'}</span>
+              </div>
+          </label>
+      `).join('');
   }
 });
 </script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 </html>

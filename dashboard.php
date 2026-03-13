@@ -301,8 +301,10 @@ async function viewInvoice(id) {
         <div class="flex flex-col md:flex-row justify-between mb-12 gap-8">
            <div>
               <div class="flex items-center gap-2 mb-4">
-                 <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center"><span class="text-white text-xl">✈️</span></div>
-                 <span class="font-extrabold text-2xl">IBCC <span class="text-secondary">Trip</span></span>
+                 <div class="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                    <div class="w-6 h-6 text-white">${window.APP_CONFIG.BRAND.ICON_SVG}</div>
+                 </div>
+                 <span class="font-extrabold text-2xl">${window.APP_CONFIG.BRAND.NAME_PART1} <span class="text-secondary">${window.APP_CONFIG.BRAND.NAME_PART2}</span></span>
               </div>
               <p class="text-sm text-gray-500 leading-relaxed uppercase tracking-widest font-bold">Official Invoice</p>
            </div>

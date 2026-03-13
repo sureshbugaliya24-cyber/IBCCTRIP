@@ -11,12 +11,15 @@
 // ─────────────────────────────────────────────────────────────
 
 if (!defined('BASE_URL')) require_once __DIR__ . '/../components/config.php';
+require_once __DIR__ . '/../components/logo.php';
 
 $pageTitle     = $pageTitle     ?? APP_NAME;
 $pageDesc      = $pageDesc      ?? 'IBCC Trip – India\'s premium travel agency. Book curated tours to Rajasthan, Dubai, Thailand & more.';
 $ogImage       = $ogImage       ?? 'https://images.unsplash.com/photo-1506929562872-bb421503ef21?w=1200';
 $canonicalPath = $canonicalPath ?? '';
-$fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP_NAME . ' — ' . APP_TAGLINE;
+
+$siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . (defined('SITE_NAME_PART2') ? SITE_NAME_PART2 : 'Trip');
+$fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . $siteFullName : $siteFullName . ' — ' . APP_TAGLINE;
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -28,6 +31,9 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP
   <?php if (!empty($pageKeywords)): ?>
   <meta name="keywords" content="<?= e($pageKeywords) ?>">
   <?php endif; ?>
+
+  <!-- Favicon (Dynamic from Logo Icon) -->
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<?= rawurlencode(SITE_ICON_SVG) ?>">
 
   <!-- Open Graph -->
   <meta property="og:title"       content="<?= e($fullTitle) ?>">
@@ -41,6 +47,25 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP
   <link rel="canonical" href="<?= BASE_URL . e($canonicalPath) ?>">
   <?php endif; ?>
 
+  <!-- Global Design System -->
+  <link rel="stylesheet" href="<?= FRONTEND_URL ?>/css/style.css?v=<?= APP_VERSION ?>">
+  
+  <style>
+    :root {
+      --primary:   <?= COLOR_PRIMARY ?>;
+      --secondary: <?= COLOR_SECONDARY ?>;
+      --accent:    <?= COLOR_ACCENT ?>;
+      --dark:      <?= COLOR_DARK ?>;
+    }
+    /* Sync Tailwind with our PHP/CSS variables */
+    @layer base {
+      :root {
+        --tw-color-primary: <?= COLOR_PRIMARY ?>;
+        --tw-color-secondary: <?= COLOR_SECONDARY ?>;
+      }
+    }
+  </style>
+
   <!-- Tailwind CSS (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -48,10 +73,10 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP
       theme: {
         extend: {
           colors: {
-            primary:   '#0B3D91',
-            secondary: '#FF6B00',
-            accent:    '#F5F7FA',
-            dark:      '#0A1628',
+            primary:   '<?= COLOR_PRIMARY ?>',
+            secondary: '<?= COLOR_SECONDARY ?>',
+            accent:    '<?= COLOR_ACCENT ?>',
+            dark:      '<?= COLOR_DARK ?>',
           },
           fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] }
         }
@@ -64,11 +89,11 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Global styles -->
+  <!-- Legacy inline styles (Consider moving to style.css) -->
   <style>
     *, *::before, *::after { box-sizing: border-box; }
     body   { font-family: 'Inter', system-ui, sans-serif; background: #F5F7FA; }
-    :root  { --primary: #0B3D91; --secondary: #FF6B00; }
+    :root  { --primary: <?= COLOR_PRIMARY ?>; --secondary: <?= COLOR_SECONDARY ?>; }
 
     /* Utility classes */
     .line-clamp-2 { display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -88,10 +113,6 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP
     .fade-in   { animation: fadeIn  .5s  ease forwards; }
     .anim-spin { animation: spin    1s   linear infinite; }
 
-    /* Scroll snap for destination carousel */
-    .snap-x { scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch; }
-    .snap-x > * { scroll-snap-align:start; }
-
     /* Spinner */
     .spinner { width:44px; height:44px; border:4px solid #e5e7eb; border-top-color:var(--primary); border-radius:50%; animation:spin 1s linear infinite; }
 
@@ -105,5 +126,20 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . APP_NAME : APP
     .tbl tr:last-child td { border-bottom:none; }
     .tbl tr:hover td { background:#F9FAFB; }
   </style>
+  <!-- Global App Config -->
+  <script>
+    window.APP_CONFIG = {
+      BASE_URL: '<?= BASE_URL ?>',
+      ADMIN_URL: '<?= ADMIN_URL ?>',
+      API_URL: '<?= API_URL ?>',
+      VERSION: '<?= APP_VERSION ?>',
+      BRAND: {
+        NAME_PART1: '<?= SITE_NAME_PART1 ?>',
+        NAME_PART2: '<?= SITE_NAME_PART2 ?>',
+        FULL_NAME:  '<?= $siteFullName ?>',
+        ICON_SVG:   `<?= SITE_ICON_SVG ?>`
+      }
+    };
+  </script>
 </head>
 <body class="font-sans text-gray-900 overflow-x-hidden">

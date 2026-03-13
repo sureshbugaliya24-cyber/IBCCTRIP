@@ -41,15 +41,16 @@ require_once __DIR__ . '/layouts/header.php';
         <p>We don't just sell tour packages; we curate memories. Our team of expert travel designers works around the clock to ensure every itinerary is balanced, unique, and filled with local experiences that you won't find on a standard brochure.</p>
         <p>Whether it's a luxury honeymoon in Bali, a spiritual journey through Rajasthan, or an adrenaline-pumping trek in Nepal, we handle everything from flights and hotels to local transport and 24/7 on-ground support.</p>
       </div>
+      <?php
+      $siteStats = apiGet('testimonials.php', ['action' => 'stats']);
+      ?>
       <div class="grid grid-cols-2 gap-8 mt-10">
+        <?php foreach (array_slice($siteStats, 0, 2) as $stat): ?>
         <div>
-          <h4 class="text-4xl font-black text-primary mb-1">15K+</h4>
-          <p class="text-gray-400 text-xs font-bold uppercase">Happy Travelers</p>
+          <h4 class="text-4xl font-black text-primary mb-1"><?= e($stat['stat_value'] ?? '0') ?></h4>
+          <p class="text-gray-400 text-xs font-bold uppercase"><?= e($stat['stat_label'] ?? '') ?></p>
         </div>
-        <div>
-          <h4 class="text-4xl font-black text-secondary mb-1">500+</h4>
-          <p class="text-gray-400 text-xs font-bold uppercase">Curated Tours</p>
-        </div>
+        <?php endforeach; ?>
       </div>
     </div>
   </div>
@@ -93,6 +94,5 @@ require_once __DIR__ . '/layouts/header.php';
 </div>
 
 <?php require_once __DIR__ . '/layouts/footer.php'; ?>
-<script src="<?= FRONTEND_URL ?>/js/app.js?v=<?= APP_VERSION ?>"></script>
 </body>
 </html>

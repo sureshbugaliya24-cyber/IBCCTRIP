@@ -15,12 +15,28 @@ if (!defined('API_URL')) {
 function apiGet(string $endpoint, array $params = []): array {
     $url = API_URL . '/' . ltrim($endpoint, '/');
     if ($params) $url .= '?' . http_build_query($params);
-    $ctx = stream_context_create(['http' => [
-        'method'  => 'GET',
-        'header'  => "Accept: application/json\r\n",
-        'timeout' => 8,
-    ]]);
-    $raw = @file_get_contents($url, false, $ctx);
+    
+    // Use CURL if available for better reliability and debugging
+    if (function_exists('curl_init')) {
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        curl_setopt($ch, CURLOPT_USERAGENT, 'IBCC-Trip-Server');
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
+        
+        $raw = curl_exec($ch);
+        curl_close($ch);
+    } else {
+        $ctx = stream_context_create(['http' => [
+            'method'  => 'GET',
+            'header'  => "Accept: application/json\r\nUser-Agent: IBCC-Trip-Server\r\n",
+            'timeout' => 8,
+        ]]);
+        $raw = @file_get_contents($url, false, $ctx);
+    }
+
     if (!$raw) return [];
     $json = json_decode($raw, true);
     return $json['data'] ?? [];
@@ -87,10 +103,15 @@ function statusBadge(string $status): string {
  */
 function getSessionUser(): array {
     if (session_status() !== PHP_SESSION_ACTIVE) {
-        session_name(FE_SESSION_NAME);
+        if (defined('SESSION_NAME')) session_name(SESSION_NAME);
+        else if (defined('FE_SESSION_NAME')) session_name(FE_SESSION_NAME);
         session_start();
     }
-    return $_SESSION['user'] ?? [];
+    return !empty($_SESSION['user_id']) ? [
+        'id' => $_SESSION['user_id'],
+        'role' => $_SESSION['user_role'],
+        'name' => $_SESSION['user_name']
+    ] : [];
 }
 
 /**

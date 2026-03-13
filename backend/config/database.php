@@ -1,15 +1,8 @@
 <?php
 // backend/config/database.php
-// ============================================================
-// IBCC Trip — Database Connection (PDO)
-// ============================================================
+require_once __DIR__ . '/config.php';
 
-define('DB_HOST', 'localhost');
-define('DB_PORT', '3306');
-define('DB_NAME', 'ibcctrip');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_CHARSET', 'utf8mb4');
+if (!defined('DB_CHARSET')) define('DB_CHARSET', 'utf8mb4');
 
 try {
     $dsn = sprintf(
@@ -22,6 +15,7 @@ try {
         PDO::ATTR_EMULATE_PREPARES   => false,
         PDO::MYSQL_ATTR_FOUND_ROWS   => true,
     ]);
+    require_once __DIR__ . '/settings_init.php';
 } catch (PDOException $e) {
     if (APP_ENV === 'production') {
         http_response_code(500);

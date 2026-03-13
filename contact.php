@@ -111,13 +111,14 @@ require_once __DIR__ . '/layouts/header.php';
 </section>
 
 <?php require_once __DIR__ . '/layouts/footer.php'; ?>
-<script src="<?= FRONTEND_URL ?>/js/app.js?v=<?= APP_VERSION ?>"></script>
 <script>
 async function handleContact(e) {
   e.preventDefault();
   const btn    = document.getElementById('btn-contact');
   const status = document.getElementById('c-status');
   
+  if (!btn || !status) return;
+
   btn.disabled = true;
   btn.textContent = 'Sending...';
   status.classList.add('hidden');
@@ -130,19 +131,27 @@ async function handleContact(e) {
     message: document.getElementById('c-message').value
   };
 
-  const response = await IBCC.contact.submit(data);
-  
-  btn.disabled = false;
-  btn.textContent = 'Send Message 🚀';
-  
-  if (response?.success) {
-    status.textContent = '✅ Message sent successfully! We will contact you shortly.';
-    status.classList.remove('hidden', 'bg-red-50', 'text-red-700');
-    status.classList.add('bg-green-50', 'text-green-700');
-    document.getElementById('contact-form').reset();
-  } else {
-    status.textContent = '❌ ' + (response?.message || 'Something went wrong. Please try again.');
-    status.classList.remove('hidden', 'bg-green-50', 'text-green-700');
+  try {
+    const response = await IBCC.contact.submit(data);
+    
+    btn.disabled = false;
+    btn.textContent = 'Send Message 🚀';
+    
+    if (response?.success) {
+      status.textContent = '✅ Message sent successfully! We will contact you shortly.';
+      status.classList.remove('hidden', 'bg-red-50', 'text-red-700');
+      status.classList.add('bg-green-50', 'text-green-700');
+      document.getElementById('contact-form').reset();
+    } else {
+      status.textContent = '❌ ' + (response?.message || 'Something went wrong. Please try again.');
+      status.classList.remove('hidden', 'bg-green-50', 'text-green-700');
+      status.classList.add('bg-red-50', 'text-red-700');
+    }
+  } catch (err) {
+    btn.disabled = false;
+    btn.textContent = 'Send Message 🚀';
+    status.textContent = '❌ Connection error. Please try again.';
+    status.classList.remove('hidden');
     status.classList.add('bg-red-50', 'text-red-700');
   }
 }

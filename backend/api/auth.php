@@ -105,6 +105,14 @@ try {
 
         // GET ?action=session
         case 'session':
+            $active_payments = [];
+            if (defined('PAYMENT_RAZORPAY_ENABLED') && PAYMENT_RAZORPAY_ENABLED == '1' && defined('PAYMENT_RAZORPAY_KEY') && !empty(PAYMENT_RAZORPAY_KEY)) {
+                $active_payments[] = 'Razorpay';
+            }
+            if (defined('PAYMENT_COD_ENABLED') && PAYMENT_COD_ENABLED == '1') {
+                $active_payments[] = 'COD';
+            }
+
             if (!empty($_SESSION['user_id'])) {
                 ResponseHelper::success([
                     'logged_in' => true,
@@ -112,9 +120,13 @@ try {
                     'name'      => $_SESSION['user_name'],
                     'email'     => $_SESSION['user_email'] ?? '',
                     'role'      => $_SESSION['user_role'],
+                    'active_payments' => $active_payments
                 ]);
             } else {
-                ResponseHelper::success(['logged_in' => false]);
+                ResponseHelper::success([
+                    'logged_in' => false,
+                    'active_payments' => $active_payments
+                ]);
             }
             break;
 

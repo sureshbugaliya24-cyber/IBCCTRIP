@@ -1,43 +1,42 @@
 <?php
-// frontend/components/config.php
-// ─────────────────────────────────────────────────────────────
-// Central configuration for the PHP frontend layer
-// ─────────────────────────────────────────────────────────────
+// components/config.php
+// Load Backend Config & Database (Includes settings_init.php)
+require_once __DIR__ . '/../backend/config/database.php';
 
-define('APP_NAME', 'IBCC Trip');
-define('APP_TAGLINE', 'Your Journey, Our Passion');
-define('APP_VERSION', '2.0');
+require_once __DIR__ . '/../backend/config/env.php';
 
-// Detect base URL automatically (works on XAMPP and production)
-$scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-$host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+if (!defined('APP_NAME')) {
+    define('APP_NAME', (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 . ' ' . SITE_NAME_PART2 : 'IBCC Trip'));
+}
+if (!defined('APP_TAGLINE')) define('APP_TAGLINE', 'Your Journey, Our Passion');
+if (!defined('APP_VERSION')) define('APP_VERSION', '2.0');
 
-// Get the physical path of this file and move up to the project root
-$currentFilePath = str_replace('\\', '/', __DIR__); // .../components
-$projectPath = dirname($currentFilePath); // .../ibcctrip
+if (defined('IS_LIVE') && IS_LIVE == 1) {
+    if (!defined('BASE_URL')) define('BASE_URL', 'https://ibcctrip.com');
+} else {
+    // Detect base URL automatically for local
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
 
-// Get document root
-$docRoot = str_replace('\\', '/', $_SERVER['DOCUMENT_ROOT']);
+    $projectRootPath = str_replace('\\', '/', realpath(dirname(__DIR__)));
+    $docRoot = isset($_SERVER['DOCUMENT_ROOT']) ? str_replace('\\', '/', realpath($_SERVER['DOCUMENT_ROOT'])) : '';
 
-// Calculate the relative URL path
-$root = str_replace($docRoot, '', $projectPath);
-$root = '/' . ltrim($root, '/');
-
-define('BASE_URL', $scheme . '://' . $host . $root);
-define('FRONTEND_URL', BASE_URL);
-define('ADMIN_URL', BASE_URL . '/admin');
-define('API_URL', BASE_URL . '/backend/api');
-
-// WhatsApp number (no + or spaces)
-define('WHATSAPP_NO', '917878335572');
-define('CONTACT_EMAIL', 'info@ibcctrip.com');
-define('CONTACT_PHONE', '+91 7878335572');
-define('CONTACT_ADDRESS', '123, Travel Hub, Connaught Place, New Delhi - 110001');
-
-// Company socials
-define('FACEBOOK_URL', '#');
-define('INSTAGRAM_URL', '#');
-define('TWITTER_URL', '#');
+    $rootPath = '';
+    if ($docRoot && stripos($projectRootPath, $docRoot) === 0 && strlen($projectRootPath) > strlen($docRoot)) {
+        $rootPath = '/' . trim(substr($projectRootPath, strlen($docRoot)), '/');
+    } else {
+        if (preg_match('/htdocs\/(.+)$/i', $projectRootPath, $matches)) {
+            $rootPath = '/' . $matches[1];
+        } else {
+            $rootPath = '/' . basename($projectRootPath);
+        }
+    }
+    $rootPath = '/' . ltrim(str_replace('\\', '/', $rootPath), '/');
+    if (!defined('BASE_URL')) define('BASE_URL', $scheme . '://' . $host . rtrim($rootPath, '/'));
+}
+if (!defined('FRONTEND_URL')) define('FRONTEND_URL', BASE_URL);
+if (!defined('ADMIN_URL'))    define('ADMIN_URL',    BASE_URL . '/admin');
+if (!defined('API_URL'))      define('API_URL',      BASE_URL . '/backend/api');
 
 // Session
-define('FE_SESSION_NAME', 'ibcctrip_sess');
+if (!defined('FE_SESSION_NAME')) define('FE_SESSION_NAME', 'ibcctrip_sess');

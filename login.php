@@ -5,6 +5,16 @@
 require_once __DIR__ . '/components/config.php';
 require_once __DIR__ . '/components/helpers.php';
 
+// If already logged in, redirect to home or intended page
+if (session_status() === PHP_SESSION_NONE) {
+    session_name(SESSION_NAME);
+    session_start();
+}
+if (isset($_SESSION['user_id'])) {
+    header('Location: ' . (($_SESSION['user_role'] === 'admin') ? 'admin/dashboard.php' : FRONTEND_URL . '/'));
+    exit();
+}
+
 $pageTitle = 'Login / Register';
 $activePage = 'login';
 $redirect = qParam('redirect', FRONTEND_URL . '/');
@@ -33,8 +43,8 @@ require_once __DIR__ . '/layouts/header.php';
       <div class="p-8">
         <!-- Logo/Welcome -->
         <div class="text-center mb-8">
-          <div class="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-3xl">
-            ✈️
+          <div class="mx-auto mb-4 flex justify-center">
+            <?= renderLogo('icon', 'w-16 h-16 !rounded-2xl text-3xl') ?>
           </div>
           <h2 id="auth-title" class="text-2xl font-extrabold text-gray-900">Welcome Back!</h2>
           <p id="auth-subtitle" class="text-gray-400 text-sm mt-1">Sign in to manage your trips and bookings.</p>

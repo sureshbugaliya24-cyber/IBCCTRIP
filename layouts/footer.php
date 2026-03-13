@@ -13,16 +13,8 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
 
       <!-- Brand Column -->
       <div class="md:col-span-1">
-        <a href="<?= FRONTEND_URL ?>/" class="flex items-center gap-2 mb-4">
-          <div class="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center">
-            <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                    d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8
-                       3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2
-                       2 0 012-2h1.064"/>
-            </svg>
-          </div>
-          <span class="font-extrabold text-xl">IBCC <span class="text-secondary">Trip</span></span>
+        <a href="<?= FRONTEND_URL ?>/" class="mb-4 block">
+          <?= renderLogo() ?>
         </a>
         <p class="text-gray-400 text-sm leading-relaxed mb-5">
           India's most trusted premium travel agency since 2010.<br>
@@ -121,7 +113,7 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
 
     <!-- Bottom bar -->
     <div class="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-600">
-      <p>&copy; <?= date('Y') ?> IBCC Trip. All rights reserved. GST: 07AAADI1234A1Z5</p>
+      <p>&copy; <?= date('Y') ?> <?= (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') ?> <?= (defined('SITE_NAME_PART2') ? SITE_NAME_PART2 : 'Trip') ?>. All rights reserved.</p>
       <div class="flex flex-wrap gap-4">
         <a href="<?= FRONTEND_URL ?>/about"   class="hover:text-gray-300 transition-colors">About</a>
         <a href="#" class="hover:text-gray-300 transition-colors">Privacy Policy</a>

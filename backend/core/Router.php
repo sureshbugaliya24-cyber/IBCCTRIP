@@ -52,9 +52,7 @@ class Router
         $title_col = "title_" . $lang;
 
         // Define base protocol and domain dynamically or fallback
-        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http";
-        $domain = $_SERVER['HTTP_HOST'];
-        $base_url = "{$protocol}://{$domain}/trip/ibcctrip";
+        $base_url = BASE_URL;
 
         // Build Canonical URL WITHOUT URL params like ?lang=hi
         $canonical_url = $base_url . ($url ? '/' . $url : '');

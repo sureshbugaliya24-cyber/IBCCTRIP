@@ -44,6 +44,36 @@ function generateInvoiceNumber(PDO $pdo): string
     return $inv;
 }
 
+function createRazorpayOrder(float $amount, string $receipt): ?string
+{
+    if (!defined('PAYMENT_RAZORPAY_KEY') || !defined('PAYMENT_RAZORPAY_SECRET')) return null;
+    
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, 'https://api.razorpay.com/v1/orders');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_USERPWD, PAYMENT_RAZORPAY_KEY . ':' . PAYMENT_RAZORPAY_SECRET);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+        'amount'   => (int)($amount * 100), // In paise
+        'currency' => 'INR',
+        'receipt'  => $receipt,
+    ]));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+    
+    $res = curl_exec($ch);
+    $data = json_decode($res, true);
+    curl_close($ch);
+    
+    return $data['id'] ?? null;
+}
+
+function verifyRazorpaySignature(string $orderId, string $paymentId, string $signature): bool
+{
+    if (!defined('PAYMENT_RAZORPAY_SECRET')) return false;
+    $expected = hash_hmac('sha256', $orderId . '|' . $paymentId, PAYMENT_RAZORPAY_SECRET);
+    return hash_equals($expected, $signature);
+}
+
 try {
     switch ($action) {
 
@@ -55,10 +85,18 @@ try {
             $startDate = $clean(   $input['start_date'] ?? '');
             $numDays   = (int)    ($input['num_days']   ?? 1);
             $numMembers= max(1,(int)($input['num_members'] ?? 1));
-            $fullName  = $clean(   $input['full_name']  ?? '');
-            $email     = filter_var(trim($input['email'] ?? ''), FILTER_VALIDATE_EMAIL);
+            $fullName  = $clean(   $input['full_name']  ?? $_SESSION['user_name'] ?? '');
+            $email     = filter_var(trim($input['email'] ?? $_SESSION['user_email'] ?? ''), FILTER_VALIDATE_EMAIL);
+            
+            // For phone, we might need a DB lookup if not in session, but let's try input first
             $phone     = $clean(   $input['phone']      ?? '');
-            $notes     = $clean(   $input['special_notes'] ?? '');
+            if (!$phone && !empty($_SESSION['user_id'])) {
+                $uStmt = $pdo->prepare("SELECT phone FROM users WHERE id = ?");
+                $uStmt->execute([$_SESSION['user_id']]);
+                $phone = $uStmt->fetchColumn() ?: '';
+            }
+
+            $notes     = $clean(   $input['special_requests'] ?? $input['special_notes'] ?? '');
 
             // Validation
             if (!$tripId)    ResponseHelper::error('Trip is required');
@@ -72,10 +110,23 @@ try {
             }
 
             // Fetch trip price
-            $tripStmt = $pdo->prepare("SELECT id, base_price, discounted_price, duration_days, title FROM trips WHERE id = ? AND is_active = 1");
+            $tripStmt = $pdo->prepare("SELECT * FROM trips WHERE id = ? AND is_active = 1");
             $tripStmt->execute([$tripId]);
             $trip = $tripStmt->fetch();
             if (!$trip) ResponseHelper::error('Trip not found or inactive', 404);
+
+            // Create snapshot of trip details
+            $tripSnapshot = [
+                'title'            => $trip['title'],
+                'slug'             => $trip['slug'],
+                'cover_image'      => $trip['cover_image'],
+                'duration_days'    => $trip['duration_days'],
+                'base_price'       => $trip['base_price'],
+                'discounted_price' => $trip['discounted_price'],
+                'trip_type'        => $trip['trip_type'],
+                'difficulty'       => $trip['difficulty']
+            ];
+            $tripSnapshotJson = json_encode($tripSnapshot);
 
             $pricePerPerson = $trip['discounted_price'] ?? $trip['base_price'];
             $totalPrice     = round($pricePerPerson * $numMembers, 2);
@@ -85,36 +136,118 @@ try {
             $invoiceNum  = generateInvoiceNumber($pdo);
 
             $userId = AuthMiddleware::optionalAuth()['id'] ?? null;
+            session_write_close(); // Prevent session locking for other requests
 
-            // Insert booking
-            $bStmt = $pdo->prepare(
-                "INSERT INTO bookings (booking_ref, user_id, trip_id, start_date, end_date, duration_days, num_members,
-                                       full_name, email, phone, special_notes, status, total_price, currency_code, base_price)
-                 VALUES (?,?,?,?,?,?,?,?,?,?,?,'Pending',?,'INR',?)"
-            );
-            $bStmt->execute([
-                $bookingRef, $userId, $tripId, $startDate, $endDate, $numDays, $numMembers,
-                $fullName, $email, $phone, $notes, $totalPrice, $totalPrice
-            ]);
-            $bookingId = (int) $pdo->lastInsertId();
+            try {
+                $pdo->beginTransaction();
 
-            // Insert payment
-            $pStmt = $pdo->prepare(
-                "INSERT INTO payments (booking_id, invoice_number, amount, currency_code, status)
-                 VALUES (?,?,?,'INR','Pending')"
-            );
-            $pStmt->execute([$bookingId, $invoiceNum, $totalPrice]);
+                // 1. Insert booking
+                $bStmt = $pdo->prepare(
+                    "INSERT INTO bookings (booking_ref, user_id, trip_id, start_date, end_date, duration_days, num_members,
+                                           full_name, email, phone, special_notes, status, total_price, currency_code, base_price, trip_details)
+                     VALUES (?,?,?,?,?,?,?,?,?,?,?,'Pending',?,'INR',?,?)"
+                );
+                $bStmt->execute([
+                    $bookingRef, $userId, $tripId, $startDate, $endDate, $numDays, $numMembers,
+                    $fullName, $email, $phone, $notes, $totalPrice, $totalPrice, $tripSnapshotJson
+                ]);
+                $bookingId = (int) $pdo->lastInsertId();
 
-            ResponseHelper::success([
-                'booking_id'     => $bookingId,
-                'booking_ref'    => $bookingRef,
-                'invoice_number' => $invoiceNum,
-                'total_price'    => $totalPrice,
-                'trip_title'     => $trip['title'],
-                'start_date'     => $startDate,
-                'end_date'       => $endDate,
-                'num_members'    => $numMembers,
-            ], 'Booking created successfully!');
+                $methodName = $clean($input['payment_method'] ?? 'COD');
+                
+                // Validate if method is enabled
+                if ($methodName === 'Razorpay' && (!defined('PAYMENT_RAZORPAY_ENABLED') || PAYMENT_RAZORPAY_ENABLED != '1')) {
+                    ResponseHelper::error('Razorpay is currently unavailable');
+                }
+                if ($methodName === 'COD' && (!defined('PAYMENT_COD_ENABLED') || PAYMENT_COD_ENABLED != '1')) {
+                    ResponseHelper::error('COD is currently unavailable');
+                }
+
+                $rzpOrderId = null;
+                if ($methodName === 'Razorpay') {
+                    $rzpOrderId = createRazorpayOrder($totalPrice, $bookingRef);
+                    if (!$rzpOrderId) ResponseHelper::error('Failed to initialize Razorpay payment');
+                }
+
+                // 2. Insert payment record
+                $pStmt = $pdo->prepare(
+                    "INSERT INTO payments (booking_id, invoice_number, amount, currency_code, status, payment_method, razorpay_order_id)
+                     VALUES (?,?,?,?,'Pending',?,?)"
+                );
+                $pStmt->execute([$bookingId, $invoiceNum, $totalPrice, 'INR', $methodName, $rzpOrderId]);
+
+                $pdo->commit();
+
+                ResponseHelper::success([
+                    'booking_id'     => $bookingId,
+                    'booking_ref'    => $bookingRef,
+                    'invoice_number' => $invoiceNum,
+                    'total_price'    => $totalPrice,
+                    'trip_title'     => $trip['title'],
+                    'start_date'     => $startDate,
+                    'end_date'       => $endDate,
+                    'num_members'    => $numMembers,
+                    'payment_method' => $methodName,
+                    'razorpay_order_id' => $rzpOrderId,
+                    'razorpay_key'      => PAYMENT_RAZORPAY_KEY ?? null
+                ], 'Booking created successfully!');
+
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                
+                // If it's a unique constraint violation (SQLSTATE 23000), it's likely a collision
+                if ($e instanceof PDOException && $e->getCode() == '23000') {
+                    ResponseHelper::error('A temporary system error occurred. Please try again in a moment.', 409);
+                } else {
+                    throw $e; // Re-throw for outer handler
+                }
+            }
+            break;
+
+        case 'verify-payment':
+            $rzpPaymentId = $clean($input['razorpay_payment_id'] ?? '');
+            $rzpOrderId   = $clean($input['razorpay_order_id'] ?? '');
+            $rzpSignature = $clean($input['razorpay_signature'] ?? '');
+            
+            if (!$rzpPaymentId || !$rzpOrderId || !$rzpSignature) {
+                ResponseHelper::error('Missing payment verification data');
+            }
+            
+            if (!verifyRazorpaySignature($rzpOrderId, $rzpPaymentId, $rzpSignature)) {
+                ResponseHelper::error('Invalid payment signature');
+            }
+            
+            // Signature is valid, update booking and payment
+            try {
+                $pdo->beginTransaction();
+                
+                // Find payment record by order id
+                $pStmt = $pdo->prepare("SELECT id, booking_id FROM payments WHERE razorpay_order_id = ?");
+                $pStmt->execute([$rzpOrderId]);
+                $payment = $pStmt->fetch();
+                
+                if (!$payment) {
+                    $pdo->rollBack();
+                    ResponseHelper::error('Payment record not found for this order');
+                }
+                
+                // Update payment
+                $upStmt = $pdo->prepare("UPDATE payments SET status = 'Paid', razorpay_payment_id = ?, razorpay_signature = ? WHERE id = ?");
+                $upStmt->execute([$rzpPaymentId, $rzpSignature, $payment['id']]);
+                
+                // Update booking
+                $ubStmt = $pdo->prepare("UPDATE bookings SET status = 'Confirmed' WHERE id = ?");
+                $ubStmt->execute([$payment['booking_id']]);
+                
+                $pdo->commit();
+                ResponseHelper::success([], 'Payment verified and booking confirmed!');
+                
+            } catch (Exception $e) {
+                if ($pdo->inTransaction()) $pdo->rollBack();
+                ResponseHelper::error($e->getMessage());
+            }
             break;
 
         // GET ?action=my-bookings
@@ -131,7 +264,19 @@ try {
                  ORDER BY b.created_at DESC"
             );
             $stmt->execute([$user['id']]);
-            ResponseHelper::success($stmt->fetchAll());
+            $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+            
+            // Handle fallbacks for deleted trips
+            foreach ($results as &$row) {
+                if ($row['trip_id'] === null) {
+                    $snap = !empty($row['trip_details']) ? json_decode($row['trip_details'], true) : [];
+                    $row['trip_title']  = $snap['title'] ?? 'Trip (Deleted)';
+                    $row['trip_slug']   = $snap['slug'] ?? '';
+                    $row['cover_image'] = $snap['cover_image'] ?? '';
+                }
+            }
+
+            ResponseHelper::success($results);
             break;
 
         // GET ?action=invoice&id=
@@ -149,8 +294,17 @@ try {
                  WHERE b.id = ? AND (b.user_id = ? OR ? = 'admin')"
             );
             $stmt->execute([$bookingId, $user['id'], $user['role']]);
-            $booking = $stmt->fetch();
+            $booking = $stmt->fetch(PDO::FETCH_ASSOC);
             if (!$booking) ResponseHelper::error('Booking not found', 404);
+
+            // Handle fallbacks for deleted trips
+            if ($booking['trip_id'] === null) {
+                $snap = !empty($booking['trip_details']) ? json_decode($booking['trip_details'], true) : [];
+                $booking['trip_title']  = $snap['title'] ?? 'Trip (Deleted)';
+                $booking['trip_slug']   = $snap['slug'] ?? '';
+                $booking['cover_image'] = $snap['cover_image'] ?? '';
+                $booking['trip_description'] = $snap['description'] ?? 'This trip has been removed from our listings.';
+            }
 
             // Company info
             $booking['company'] = [

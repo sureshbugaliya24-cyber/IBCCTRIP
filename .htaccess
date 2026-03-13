@@ -1,5 +1,5 @@
 RewriteEngine On
-RewriteBase /trip/ibcctrip/
+RewriteBase /ibcctrip/
 
 # 1. Allow direct access to existing directories
 RewriteRule ^(api|backend|admin|uploads|assets|css|js|images|core|database|components|layouts|locales|views) - [L]
@@ -20,7 +20,7 @@ RewriteRule ^index\.php$ ./ [R=301,L]
 DirectoryIndex index.php
 
 # 6. Custom Error 404
-ErrorDocument 404 /trip/ibcctrip/index.php?error=404
+ErrorDocument 404 /ibcctrip/index.php?error=404
 
 # 7. Security - Prevent listing directories
 Options -Indexes

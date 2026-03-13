@@ -8,9 +8,12 @@ class CorsMiddleware
 {
     public static function handle(): void
     {
+        $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'http';
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        
         $allowedOrigins = [
             'http://localhost',
-            'http://localhost/trip/ibcctrip',
+            $protocol . '://' . $host,
         ];
 
         $origin = $_SERVER['HTTP_ORIGIN'] ?? '';

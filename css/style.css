@@ -1,0 +1,67 @@
+/* Global Design System variables initialized in head.php */
+
+:root {
+    --primary: #0B3D91;
+    --secondary: #FF6B00;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--primary);
+    border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--secondary);
+}
+
+/* Browser Autofill Styling */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+select:-webkit-autofill,
+select:-webkit-autofill:hover,
+select:-webkit-autofill:focus {
+    -webkit-text-fill-color: #374151;
+    -webkit-box-shadow: 0 0 0px 1000px #F9FAFB inset;
+    transition: background-color 5000s ease-in-out 0s;
+    font-family: inherit;
+}
+
+/* Global utility enhancements */
+.text-primary { color: var(--primary); }
+.bg-primary { background-color: var(--primary); }
+.text-secondary { color: var(--secondary); }
+.bg-secondary { background-color: var(--secondary); }
+.border-primary { border-color: var(--primary); }
+.border-secondary { border-color: var(--secondary); }
+
+/* Buttons & Interactive */
+.btn-primary {
+    background-color: var(--primary);
+    color: white;
+    transition: all 0.3s ease;
+}
+.btn-primary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background-color: var(--secondary);
+    color: white;
+    transition: all 0.3s ease;
+}
+.btn-secondary:hover {
+    filter: brightness(1.1);
+    transform: translateY(-1px);
+}

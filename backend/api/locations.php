@@ -9,6 +9,7 @@ require_once __DIR__ . '/../middleware/CorsMiddleware.php';
 
 CorsMiddleware::handle();
 header('Content-Type: application/json; charset=UTF-8');
+header('Cache-Control: public, max-age=600'); // Cache for 10 minutes (static data)
 
 $action = $_GET['action'] ?? 'countries';
 

@@ -28,19 +28,8 @@ function navCls(string $page, string $active): string {
      data-transparent="<?= $transparent ? '1' : '0' ?>">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 md:h-20">
 
-    <!-- Logo -->
-    <a href="<?= FRONTEND_URL ?>/" class="flex items-center gap-2 shrink-0">
-      <div class="w-9 h-9 rounded-xl bg-secondary flex items-center justify-center shadow-lg">
-        <svg class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"
-                d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5
-                   2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 004 0 2 2 0 012-2h1.064M15
-                   20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-        </svg>
-      </div>
-      <span class="text-white font-extrabold text-xl tracking-tight leading-none">
-        IBCC&nbsp;<span class="text-secondary">Trip</span>
-      </span>
+    <a href="<?= FRONTEND_URL ?>/" class="shrink-0">
+      <?= renderLogo() ?>
     </a>
 
     <!-- Desktop Nav Links -->
@@ -83,7 +72,7 @@ function navCls(string $page, string $active): string {
     <!-- Right-side Auth Buttons -->
     <div class="hidden md:flex items-center gap-3">
       <!-- Shown when NOT logged in (JS toggles visibility) -->
-      <a id="nav-login" href="<?= FRONTEND_URL ?>/login"
+      <a id="nav-login" href="<?= FRONTEND_URL ?>/login" style="display:none"
          class="text-white text-sm font-semibold hover:text-secondary transition-colors">
         Login
       </a>
@@ -123,7 +112,7 @@ function navCls(string $page, string $active): string {
     <a href="<?= FRONTEND_URL ?>/blog"    class="block text-white py-2.5 border-b border-white/10 text-sm">📝 Blog</a>
     <a href="<?= FRONTEND_URL ?>/about"   class="block text-white py-2.5 border-b border-white/10 text-sm">🏢 About</a>
     <a href="<?= FRONTEND_URL ?>/contact" class="block text-white py-2.5 border-b border-white/10 text-sm">📞 Contact</a>
-    <a id="mobile-login" href="<?= FRONTEND_URL ?>/login"   class="block mt-3 bg-secondary text-white text-center py-3 rounded-xl font-extrabold text-sm">
+    <a id="mobile-login" href="<?= FRONTEND_URL ?>/login" style="display:none" class="block mt-3 bg-secondary text-white text-center py-3 rounded-xl font-extrabold text-sm">
       Login / Register
     </a>
     <div id="mobile-user" class="hidden mt-3 pt-3 border-t border-white/10">
@@ -144,13 +133,52 @@ function navCls(string $page, string $active): string {
 <div class="h-16 md:h-20"></div>
 <?php endif; ?>
 
+<script src="<?= FRONTEND_URL ?>/js/app.js?v=<?= APP_VERSION ?>"></script>
 <script>
-// Navbar scroll effect (active on transparent-mode hero pages)
+// Global Session Sync & Scroll Effects
 (function() {
-  var nav       = document.getElementById('main-navbar');
-  var isTrans   = nav.dataset.transparent === '1';
-  if (!isTrans) return;
-  window.addEventListener('scroll', function() {
+  const nav       = document.getElementById('main-navbar');
+  const isTrans   = nav.dataset.transparent === '1';
+
+  // Auth Sync
+  async function syncAuth() {
+    const user = await Session.init();
+    const loginBtn = document.getElementById('nav-login');
+    const dashBtn  = document.getElementById('nav-dashboard');
+    const mLogin   = document.getElementById('mobile-login');
+    const mUser    = document.getElementById('mobile-user');
+
+    if (user && user.logged_in) {
+        // Desktop
+        const avatar   = document.getElementById('nav-avatar');
+        const name     = document.getElementById('nav-user-name');
+        
+        if(loginBtn) loginBtn.style.display = 'none';
+        if(dashBtn) dashBtn.style.display = 'flex';
+        if(avatar) avatar.textContent = user.name[0].toUpperCase();
+        if(name) name.textContent = user.name.split(' ')[0];
+
+        // Mobile
+        const mName  = document.getElementById('mobile-user-name');
+        const mAvatar= document.getElementById('mobile-avatar');
+        
+        if(mLogin) mLogin.style.display = 'none';
+        if(mUser) mUser.classList.remove('hidden');
+        if(mName) mName.textContent = user.name;
+        if(mAvatar) mAvatar.textContent = user.name[0].toUpperCase();
+    } else {
+        // NOT logged in
+        if(loginBtn) loginBtn.style.display = 'inline-block';
+        if(dashBtn) dashBtn.style.display = 'none';
+        
+        if(mLogin) mLogin.style.display = 'block';
+        if(mUser) mUser.classList.add('hidden');
+    }
+  }
+
+  // Scroll Handler
+  function handleScroll() {
+    if (!isTrans) return;
     if (window.scrollY > 80) {
       nav.classList.remove('bg-transparent');
       nav.classList.add('bg-primary', 'shadow-lg');
@@ -158,6 +186,11 @@ function navCls(string $page, string $active): string {
       nav.classList.add('bg-transparent');
       nav.classList.remove('bg-primary', 'shadow-lg');
     }
-  }, { passive: true });
+  }
+
+  syncAuth();
+  if (isTrans) {
+    window.addEventListener('scroll', handleScroll, { passive: true });
+  }
 }());
 </script>

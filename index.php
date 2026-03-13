@@ -7,11 +7,14 @@ require_once __DIR__ . '/components/helpers.php';
 require_once __DIR__ . '/components/trip-card.php';
 require_once __DIR__ . '/components/blog-card.php';
 require_once __DIR__ . '/components/country-card.php';
+require_once __DIR__ . '/components/testimonial-card.php';
 
 // Fetch data server-side
 $featuredTrips = apiGet('trips.php', ['action' => 'featured', 'limit' => 6]);
 $countries     = apiGet('locations.php', ['action' => 'countries', 'limit' => 8]);
 $latestBlogs   = apiGet('blogs.php', ['action' => 'recent', 'limit' => 3]);
+$testimonials  = apiGet('testimonials.php', ['action' => 'all', 'limit' => 3]);
+$siteStats     = apiGet('testimonials.php', ['action' => 'stats']);
 
 // Page meta
 $pageTitle   = 'Premium Travel Packages in India & Abroad';
@@ -88,18 +91,12 @@ require_once __DIR__ . '/layouts/header.php';
     <!-- Stats Floating Card -->
     <div class="absolute bottom-8 left-4 right-4 md:left-auto md:right-12 md:bottom-16">
       <div class="glass rounded-2xl p-5 grid grid-cols-3 gap-0 max-w-sm mx-auto md:mx-0 text-center">
-        <div class="border-r border-white/20">
-          <p class="font-extrabold text-2xl text-secondary">15K+</p>
-          <p class="text-white/70 text-xs mt-1">Travelers</p>
+        <?php foreach ($siteStats as $index => $stat): ?>
+        <div class="<?= $index < 2 ? 'border-r border-white/20' : '' ?>">
+          <p class="font-extrabold text-2xl text-secondary"><?= e($stat['stat_value'] ?? '0') ?></p>
+          <p class="text-white/70 text-xs mt-1"><?= e($stat['stat_label'] ?? '') ?></p>
         </div>
-        <div class="border-r border-white/20">
-          <p class="font-extrabold text-2xl text-secondary">500+</p>
-          <p class="text-white/70 text-xs mt-1">Packages</p>
-        </div>
-        <div>
-          <p class="font-extrabold text-2xl text-secondary">50+</p>
-          <p class="text-white/70 text-xs mt-1">Countries</p>
-        </div>
+        <?php endforeach; ?>
       </div>
     </div>
   </div>
@@ -207,27 +204,11 @@ require_once __DIR__ . '/layouts/header.php';
       <h2 class="text-3xl font-extrabold text-gray-900">What Our <span class="text-primary">Travelers Say</span></h2>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <?php
-      $testimonials = [
-        ['Rajesh Sharma', 'Delhi', '⭐⭐⭐⭐⭐', 'Booked Rajasthan trip. Absolutely flawless experience — hotel, transport, guides, everything was top-notch! IBCC Trip never disappoints.', 'RS'],
-        ['Priya Mehta',   'Mumbai', '⭐⭐⭐⭐⭐', 'Our Bali honeymoon was a dream come true. The itinerary was perfect, with just the right balance of adventure and relaxation.', 'PM'],
-        ['Amit Patel',    'Gujarat', '⭐⭐⭐⭐⭐', 'Third trip with IBCC Trip. Dubai package was amazing value. Will keep coming back — best travel agency in India!', 'AP'],
-      ];
-      foreach ($testimonials as $t): ?>
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-xl transition-shadow">
-        <div class="flex items-center gap-3 mb-4">
-          <div class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-extrabold text-lg shrink-0">
-            <?= $t[4] ?>
-          </div>
-          <div>
-            <p class="font-extrabold text-gray-900"><?= e($t[0]) ?></p>
-            <p class="text-gray-400 text-xs"><?= e($t[1]) ?></p>
-          </div>
-          <div class="ml-auto text-sm"><?= $t[2] ?></div>
-        </div>
-        <p class="text-gray-600 text-sm leading-relaxed italic">"<?= e($t[3]) ?>"</p>
-      </div>
-      <?php endforeach; ?>
+      <?php if (count($testimonials) > 0): ?>
+        <?php foreach ($testimonials as $t): renderTestimonialCard($t); endforeach; ?>
+      <?php else: ?>
+        <div class="col-span-3 text-center py-10 text-gray-400">Be the first to share your experience with us!</div>
+      <?php endif; ?>
     </div>
   </div>
 </section>
@@ -278,21 +259,9 @@ require_once __DIR__ . '/layouts/header.php';
 
 <?php require_once __DIR__ . '/layouts/footer.php'; ?>
 
-<!-- App JS => session + nav update + search -->
-<script src="<?= FRONTEND_URL ?>/js/app.js?v=<?= APP_VERSION ?>"></script>
+<!-- App JS => search logic -->
 <script>
 document.addEventListener('DOMContentLoaded', async function() {
-  // Update nav auth state
-  const user = await Session.init();
-  if (user) {
-    document.getElementById('nav-login').style.display = 'none';
-    document.getElementById('nav-dashboard').style.display = 'flex';
-    document.getElementById('nav-logout').style.display = 'block';
-    document.getElementById('nav-avatar').textContent = user.name[0];
-    const nn = document.getElementById('nav-user-name');
-    if (nn) nn.textContent = user.name.split(' ')[0];
-  }
-
   // Hero live search
   const searchInput = document.getElementById('hero-search');
   const btn         = document.getElementById('hero-search-btn');

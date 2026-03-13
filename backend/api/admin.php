@@ -29,8 +29,16 @@ if (in_array($method, ['POST', 'PUT'])) {
 }
 
 $clean = fn($v) => htmlspecialchars(strip_tags(trim($v ?? '')), ENT_QUOTES, 'UTF-8');
+$toNull= fn($v) => ($v === '' || $v === 'null' || $v === null) ? null : $v;
 
-function handleUpload($fileArray, $uploadDir = '../../uploads/', $prefix = 'img') {
+function deleteFile($url) {
+    if (!$url) return;
+    $filename = basename($url);
+    $path = realpath(__DIR__ . '/../../') . '/uploads/' . $filename;
+    if (file_exists($path)) @unlink($path);
+}
+
+function handleUpload($fileArray, $uploadDir = '../../uploads/', $prefix = 'img', $useRandomSuffix = true) {
     if (!isset($fileArray) || $fileArray['error'] !== UPLOAD_ERR_OK) return null;
     $ext = strtolower(pathinfo($fileArray['name'], PATHINFO_EXTENSION));
     if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) return null;
@@ -40,15 +48,17 @@ function handleUpload($fileArray, $uploadDir = '../../uploads/', $prefix = 'img'
     $cleanPrefix = trim($cleanPrefix, '-');
     if (!$cleanPrefix) $cleanPrefix = 'img';
     
-    $filename = $cleanPrefix . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-    $targetPath = __DIR__ . '/' . $uploadDir . $filename;
+    $filename = $cleanPrefix . ($useRandomSuffix ? '_' . bin2hex(random_bytes(4)) : '') . '.' . $ext;
+    
+    // Use root uploads directory by default
+    $targetPath = realpath(__DIR__ . '/../../') . '/uploads/' . $filename;
     
     // Ensure dir exists
     $dirPath = dirname($targetPath);
     if (!is_dir($dirPath)) mkdir($dirPath, 0777, true);
     
     if (move_uploaded_file($fileArray['tmp_name'], $targetPath)) {
-        return FRONTEND_URL . '/uploads/' . $filename; // Store public URL
+        return BASE_URL . '/uploads/' . $filename; 
     }
     return null;
 }
@@ -88,12 +98,19 @@ try {
 
             // Recent bookings
             $recStmt = $pdo->query(
-                "SELECT b.booking_ref, b.full_name, b.email, b.status, b.total_price, b.created_at,
-                        t.title AS trip_title
+                "SELECT b.id, b.booking_ref, b.full_name, b.email, b.status, b.total_price, b.created_at,
+                        b.trip_id, b.trip_details, t.title AS trip_title
                  FROM bookings b LEFT JOIN trips t ON b.trip_id = t.id
                  ORDER BY b.created_at DESC LIMIT 10"
             );
-            $stats['recent_bookings'] = $recStmt->fetchAll();
+            $recent = $recStmt->fetchAll(PDO::FETCH_ASSOC);
+            foreach ($recent as &$r) {
+                if ($r['trip_id'] === null) {
+                    $snap = !empty($r['trip_details']) ? json_decode($r['trip_details'], true) : [];
+                    $r['trip_title'] = $snap['title'] ?? 'Trip (Deleted)';
+                }
+            }
+            $stats['recent_bookings'] = $recent;
 
             ResponseHelper::success($stats);
             break;
@@ -149,7 +166,7 @@ try {
                 $metaTitle = $clean($input['meta_title'] ?? $title);
                 if (!$title || !$slug) ResponseHelper::error('Title and slug required');
 
-                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', $metaTitle);
+                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', $slug ?: $metaTitle, false);
 
                 $stmt = $pdo->prepare(
                     "INSERT INTO trips (title,slug,description,highlights,inclusions,exclusions,
@@ -165,10 +182,10 @@ try {
                     $input['highlights']  ?? '[]',
                     $input['inclusions']  ?? '[]',
                     $input['exclusions']  ?? '[]',
-                    $input['country_id']  ?? null,
-                    $input['state_id']    ?? null,
-                    $input['city_id']     ?? null,
-                    $input['place_id']    ?? null,
+                    $toNull($input['country_id']  ?? null),
+                    $toNull($input['state_id']    ?? null),
+                    $toNull($input['city_id']     ?? null),
+                    $toNull($input['place_id']    ?? null),
                     (float)($input['base_price'] ?? 0),
                     !empty($input['discounted_price']) ? (float)$input['discounted_price'] : null,
                     (int)($input['duration_days'] ?? 1),
@@ -184,6 +201,11 @@ try {
                 ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Trip created');
             }
             elseif ($action === 'update' && $id) {
+                $stmt = $pdo->prepare("SELECT * FROM trips WHERE id = ?");
+                $stmt->execute([$id]);
+                $oldTrip = $stmt->fetch();
+                if (!$oldTrip) ResponseHelper::error('Trip not found');
+
                 $fields = ['title','slug','description','highlights','inclusions','exclusions',
                            'country_id','state_id','city_id','place_id','base_price','discounted_price',
                            'duration_days','max_members','difficulty','trip_type','is_featured','is_active',
@@ -191,15 +213,31 @@ try {
                 $sets   = [];
                 $vals   = [];
                 foreach ($fields as $f) {
-                    if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
+                    if (array_key_exists($f, $input)) {
+                        $sets[] = "`$f` = ?";
+                        $val = $input[$f];
+                        // Handle FK fields
+                        if (in_array($f, ['country_id','state_id','city_id','place_id','category_id'])) {
+                            $val = $toNull($val);
+                        }
+                        $vals[] = $val;
+                    }
                 }
                 
-                $metaTitle = $clean($input['meta_title'] ?? '');
+                $slug = $input['slug'] ?? $oldTrip['slug'];
                 
-                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', $metaTitle ?: 'trip-cover');
+                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', ($slug ?: 'trip-cover'), false);
                 if ($coverImage) { $sets[] = "`cover_image` = ?"; $vals[] = $coverImage; }
-                $mapImage = handleUpload($_FILES['map_image'] ?? null, '../../uploads/', ($metaTitle ?: 'trip') . '-map');
-                if ($mapImage) { $sets[] = "`map_image` = ?"; $vals[] = $mapImage; }
+                
+                if (!empty($_FILES['map_image'])) {
+                    // Delete old map if exists
+                    if (!empty($oldTrip['map_image'])) {
+                        $oldMapPath = realpath(__DIR__ . '/../../') . '/uploads/' . basename($oldTrip['map_image']);
+                        if (file_exists($oldMapPath)) @unlink($oldMapPath);
+                    }
+                    $mapImage = handleUpload($_FILES['map_image'], '../../uploads/', ($slug ?: 'trip') . '-map', false);
+                    if ($mapImage) { $sets[] = "`map_image` = ?"; $vals[] = $mapImage; }
+                }
 
                 if (empty($sets)) ResponseHelper::error('Nothing to update');
                 $vals[] = $id;
@@ -219,15 +257,20 @@ try {
 
                 // Save gallery images if uploaded
                 if (!empty($_FILES['gallery_images'])) {
+                    // Get current count to continue numbering
+                    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM trip_gallery WHERE trip_id = ?");
+                    $countStmt->execute([$id]);
+                    $currentCount = (int)$countStmt->fetchColumn();
+
                     $gStmt = $pdo->prepare("INSERT INTO trip_gallery (trip_id, image_url, alt_text, sort_order) VALUES (?,?,?,?)");
                     $files = $_FILES['gallery_images'];
                     $count = is_array($files['name']) ? count($files['name']) : 1;
-                    $galleryPrefix = ($metaTitle ?: 'trip') . '-gallery';
+                    $galleryPrefix = ($slug ?: 'trip') . '-gallery';
                     for ($i = 0; $i < $count; $i++) {
                         $singleFile = is_array($files['name']) ? ['name'=>$files['name'][$i],'type'=>$files['type'][$i],'tmp_name'=>$files['tmp_name'][$i],'error'=>$files['error'][$i],'size'=>$files['size'][$i]] : $files;
-                        $imgUrl = handleUpload($singleFile, '../../uploads/', $galleryPrefix . '-' . ($i + 1));
+                        $imgUrl = handleUpload($singleFile, '../../uploads/', $galleryPrefix . '-' . ($currentCount + $i + 1), false);
                         if ($imgUrl) {
-                            $gStmt->execute([$id, $imgUrl, '', $i]);
+                            $gStmt->execute([$id, $imgUrl, '', $currentCount + $i]);
                         }
                     }
                 }
@@ -254,6 +297,27 @@ try {
                 ResponseHelper::success([], 'Trip updated');
             }
             elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT cover_image, map_image FROM trips WHERE id = ?");
+                $stmt->execute([$id]);
+                $trip = $stmt->fetch();
+                if ($trip) {
+                    deleteFile($trip['cover_image']);
+                    deleteFile($trip['map_image']);
+                }
+                
+                // Delete gallery images
+                $gStmt = $pdo->prepare("SELECT image_url FROM trip_gallery WHERE trip_id = ?");
+                $gStmt->execute([$id]);
+                $gallery = $gStmt->fetchAll();
+                foreach ($gallery as $img) {
+                    deleteFile($img['image_url']);
+                }
+                $pdo->prepare("DELETE FROM trip_gallery WHERE trip_id = ?")->execute([$id]);
+                
+                // Delete itinerary and videos
+                $pdo->prepare("DELETE FROM trip_itinerary WHERE trip_id = ?")->execute([$id]);
+                $pdo->prepare("DELETE FROM trip_videos WHERE trip_id = ?")->execute([$id]);
+                
                 $pdo->prepare("DELETE FROM trips WHERE id = ?")->execute([$id]);
                 ResponseHelper::success([], 'Trip deleted');
             }
@@ -281,7 +345,14 @@ try {
                      WHERE $where ORDER BY b.created_at DESC LIMIT ? OFFSET ?"
                 );
                 $stmt->execute(array_merge($params, [$limit, $offset]));
-                ResponseHelper::paginated($stmt->fetchAll(), $total, $page, $limit);
+                $bookings = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                foreach ($bookings as &$b) {
+                    if ($b['trip_id'] === null) {
+                        $snap = !empty($b['trip_details']) ? json_decode($b['trip_details'], true) : [];
+                        $b['trip_title'] = $snap['title'] ?? 'Trip (Deleted)';
+                    }
+                }
+                ResponseHelper::paginated($bookings, $total, $page, $limit);
             }
             elseif ($action === 'update-status' && $id) {
                 $status = $clean($input['status'] ?? '');
@@ -289,6 +360,13 @@ try {
                 if (!in_array($status, $allowed)) ResponseHelper::error('Invalid status');
                 $pdo->prepare("UPDATE bookings SET status = ? WHERE id = ?")->execute([$status, $id]);
                 ResponseHelper::success([], 'Status updated');
+            }
+            elseif ($action === 'delete' && $id) {
+                // Cascading delete for payments is handled by DB if configured, 
+                // but let's be explicit to be safe.
+                $pdo->prepare("DELETE FROM payments WHERE booking_id = ?")->execute([$id]);
+                $pdo->prepare("DELETE FROM bookings WHERE id = ?")->execute([$id]);
+                ResponseHelper::success([], 'Booking deleted');
             }
             break;
 
@@ -339,6 +417,9 @@ try {
                     ResponseHelper::success([], 'Updated');
                 }
             } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT featured_image FROM countries WHERE id=?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
                 $pdo->prepare("DELETE FROM countries WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Deleted');
             }
@@ -352,7 +433,12 @@ try {
                 $fields = ['country_id','name','slug','description','is_featured','meta_title','meta_description','meta_keywords'];
                 $sets = []; $vals = [];
                 foreach($fields as $f) {
-                    if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
+                    if (array_key_exists($f, $input)) {
+                        $sets[] = "`$f` = ?";
+                        $val = $input[$f];
+                        if (str_ends_with($f, '_id')) $val = $toNull($val);
+                        $vals[] = $val;
+                    }
                 }
                 $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
                 $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
@@ -367,6 +453,9 @@ try {
                     ResponseHelper::success([], 'Updated');
                 }
             } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT featured_image FROM states WHERE id=?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
                 $pdo->prepare("DELETE FROM states WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Deleted');
             }
@@ -380,7 +469,12 @@ try {
                 $fields = ['state_id','name','slug','description','is_featured','meta_title','meta_description','meta_keywords'];
                 $sets = []; $vals = [];
                 foreach($fields as $f) {
-                    if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
+                    if (array_key_exists($f, $input)) {
+                        $sets[] = "`$f` = ?";
+                        $val = $input[$f];
+                        if (str_ends_with($f, '_id')) $val = $toNull($val);
+                        $vals[] = $val;
+                    }
                 }
                 $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
                 $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
@@ -395,6 +489,9 @@ try {
                     ResponseHelper::success([], 'Updated');
                 }
             } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT featured_image FROM cities WHERE id=?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
                 $pdo->prepare("DELETE FROM cities WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Deleted');
             }
@@ -408,9 +505,15 @@ try {
                 $fields = ['city_id','name','slug','description','is_featured','meta_title','meta_description','meta_keywords'];
                 $sets = []; $vals = [];
                 foreach($fields as $f) {
-                    if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
+                    if (array_key_exists($f, $input)) {
+                        $sets[] = "`$f` = ?";
+                        $val = $input[$f];
+                        if (str_ends_with($f, '_id')) $val = $toNull($val);
+                        $vals[] = $val;
+                    }
                 }
-                $img = handleUpload($_FILES['featured_image'] ?? null);
+                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
+                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
                 if ($img) { $sets[] = "`featured_image` = ?"; $vals[] = $img; }
 
                 if ($action === 'create') {
@@ -422,6 +525,9 @@ try {
                     ResponseHelper::success([], 'Updated');
                 }
             } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT featured_image FROM places WHERE id=?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
                 $pdo->prepare("DELETE FROM places WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Deleted');
             }
@@ -447,7 +553,12 @@ try {
                 $fields = ['category_id','country_id','state_id','city_id','title','slug','excerpt','content','author','tags','status','meta_title','meta_description','meta_keywords'];
                 $sets = []; $vals = [];
                 foreach ($fields as $f) {
-                    if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f] === '' ? null : $input[$f]; }
+                    if (array_key_exists($f, $input)) {
+                        $sets[] = "`$f` = ?";
+                        $val = $input[$f];
+                        if (str_ends_with($f, '_id')) $val = $toNull($val);
+                        $vals[] = $val;
+                    }
                 }
                 $metaTitle = $clean($input['meta_title'] ?? $input['title'] ?? 'blog');
                 $featImg = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
@@ -465,6 +576,9 @@ try {
                     ResponseHelper::success([], 'Blog updated');
                 }
             } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT featured_image FROM blogs WHERE id=?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
                 $pdo->prepare("DELETE FROM blogs WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Deleted');
             }
@@ -472,15 +586,37 @@ try {
 
         // ---- TRIP GALLERY ----
         case 'trip_gallery':
-            if ($action === 'delete' && $id) {
+            if ($action === 'upload' && $id) {
+                // $id is trip_id here
+                $stmt = $pdo->prepare("SELECT slug FROM trips WHERE id = ?");
+                $stmt->execute([$id]);
+                $slug = $stmt->fetchColumn() ?: 'trip';
+                
+                $countStmt = $pdo->prepare("SELECT COUNT(*) FROM trip_gallery WHERE trip_id = ?");
+                $countStmt->execute([$id]);
+                $currentCount = (int)$countStmt->fetchColumn();
+                
+                $imgUrl = handleUpload($_FILES['file'] ?? null, '../../uploads/', $slug . '-gallery-' . ($currentCount + 1), false);
+                if ($imgUrl) {
+                    $gStmt = $pdo->prepare("INSERT INTO trip_gallery (trip_id, image_url, alt_text, sort_order) VALUES (?,?,?,?)");
+                    $gStmt->execute([$id, $imgUrl, '', $currentCount]);
+                    ResponseHelper::success([
+                        'id' => (int)$pdo->lastInsertId(),
+                        'image_url' => $imgUrl
+                    ], 'Image uploaded');
+                } else {
+                    ResponseHelper::error('Upload failed');
+                }
+            } 
+            elseif ($action === 'delete' && $id) {
                 // Get file path to delete physically
                 $stmt = $pdo->prepare("SELECT image_url FROM trip_gallery WHERE id = ?");
                 $stmt->execute([$id]);
                 $img = $stmt->fetchColumn();
                 if ($img) {
                     $filename = basename($img);
-                    $path = __DIR__ . '/../../uploads/' . $filename;
-                    if (file_exists($path)) unlink($path);
+                    $path = realpath(__DIR__ . '/../../') . '/uploads/' . $filename;
+                    if (file_exists($path)) @unlink($path);
                 }
                 $pdo->prepare("DELETE FROM trip_gallery WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Gallery image removed');
@@ -513,21 +649,101 @@ try {
             }
             break;
 
+        // ---- TESTIMONIALS ----
+        case 'testimonials':
+            if ($action === 'list') {
+                $stmt = $pdo->query("SELECT * FROM testimonials ORDER BY created_at DESC");
+                ResponseHelper::success($stmt->fetchAll());
+            } elseif ($action === 'create' || ($action === 'update' && $id)) {
+                $fields = ['name', 'role', 'rating', 'comment', 'status'];
+                $sets = []; $vals = [];
+                foreach ($fields as $f) {
+                    if (isset($input[$f])) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
+                }
+                $featImg = handleUpload($_FILES['image'] ?? null, '../../uploads/', 'testimonial-user');
+                if ($featImg) { $sets[] = "`image` = ?"; $vals[] = $featImg; }
+
+                if ($action === 'create') {
+                    $pdo->prepare("INSERT INTO testimonials (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Testimonial created');
+                } else {
+                    $vals[] = $id;
+                    $pdo->prepare("UPDATE testimonials SET " . implode(',', $sets) . " WHERE id=?")->execute($vals);
+                    ResponseHelper::success([], 'Testimonial updated');
+                }
+            } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT image FROM testimonials WHERE id=?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
+                $pdo->prepare("DELETE FROM testimonials WHERE id=?")->execute([$id]);
+                ResponseHelper::success([], 'Deleted');
+            }
+            break;
+
+        // ---- SITE STATS ----
+        case 'site_stats':
+            if ($action === 'list') {
+                $stmt = $pdo->query("SELECT * FROM site_stats ORDER BY id ASC");
+                ResponseHelper::success($stmt->fetchAll());
+            } elseif ($action === 'update' && $id) {
+                $pdo->prepare("UPDATE site_stats SET stat_value = ?, stat_label = ? WHERE id = ?")
+                    ->execute([$input['stat_value'], $input['stat_label'], $id]);
+                ResponseHelper::success([], 'Stat updated');
+            }
+            break;
+
+        // ---- SITE SETTINGS (Branding, Contact, etc.) ----
+        case 'site_settings':
+            if ($action === 'list') {
+                $stmt = $pdo->query("SELECT * FROM site_settings ORDER BY category, s_key");
+                ResponseHelper::success($stmt->fetchAll());
+            } elseif ($action === 'update') {
+                // Bulk update or single update
+                if (isset($input['settings']) && is_array($input['settings'])) {
+                    $stmt = $pdo->prepare("INSERT INTO site_settings (s_key, s_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE s_value = VALUES(s_value)");
+                    foreach ($input['settings'] as $key => $val) {
+                        $stmt->execute([$key, $val]);
+                    }
+                    ResponseHelper::success([], 'Settings updated');
+                } else {
+                    $pdo->prepare("UPDATE site_settings SET s_value = ? WHERE s_key = ?")
+                        ->execute([$input['value'], $input['key']]);
+                    ResponseHelper::success([], 'Setting updated');
+                }
+            }
+            break;
+
         // ---- CONTACT MESSAGES ----
         case 'messages':
             $page   = max(1, (int)($_GET['page'] ?? 1));
-            $limit  = 20;
+            $limit  = 50; // Increased limit for easier management
             $offset = ($page - 1) * $limit;
+            $status = $_GET['status'] ?? null;
 
             if ($action === 'list') {
-                $cStmt = $pdo->query("SELECT COUNT(*) FROM contact_messages");
+                $where = $status ? "WHERE status = '$status'" : "";
+                $cStmt = $pdo->query("SELECT COUNT(*) FROM contact_messages $where");
                 $total = (int) $cStmt->fetchColumn();
-                $stmt  = $pdo->prepare("SELECT * FROM contact_messages ORDER BY created_at DESC LIMIT ? OFFSET ?");
+                $stmt  = $pdo->prepare("SELECT * FROM contact_messages $where ORDER BY created_at DESC LIMIT ? OFFSET ?");
                 $stmt->execute([$limit, $offset]);
                 ResponseHelper::paginated($stmt->fetchAll(), $total, $page, $limit);
+            } elseif ($action === 'update' && $id) {
+                $fields = []; $vals = [];
+                if (isset($input['status'])) { $fields[] = "status=?"; $vals[] = $input['status']; }
+                if (isset($input['admin_notes'])) { $fields[] = "admin_notes=?"; $vals[] = $input['admin_notes']; }
+                if (isset($input['is_read'])) { $fields[] = "is_read=?"; $vals[] = (int)$input['is_read']; }
+                
+                if (count($fields) > 0) {
+                    $vals[] = $id;
+                    $pdo->prepare("UPDATE contact_messages SET " . implode(',', $fields) . " WHERE id=?")->execute($vals);
+                    ResponseHelper::success([], 'Message updated');
+                }
             } elseif ($action === 'mark-read' && $id) {
                 $pdo->prepare("UPDATE contact_messages SET is_read=1 WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Marked as read');
+            } elseif ($action === 'delete' && $id) {
+                $pdo->prepare("DELETE FROM contact_messages WHERE id=?")->execute([$id]);
+                ResponseHelper::success([], 'Deleted');
             }
             break;
 
