@@ -226,7 +226,7 @@ try {
                 
                 $slug = $input['slug'] ?? $oldTrip['slug'];
                 
-                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', ($slug ?: 'trip-cover'), false);
+                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', ($slug ?: 'trip-cover') . '-' . time(), false);
                 if ($coverImage) { $sets[] = "`cover_image` = ?"; $vals[] = $coverImage; }
                 
                 if (!empty($_FILES['map_image'])) {
@@ -235,7 +235,8 @@ try {
                         $oldMapPath = realpath(__DIR__ . '/../../') . '/uploads/' . basename($oldTrip['map_image']);
                         if (file_exists($oldMapPath)) @unlink($oldMapPath);
                     }
-                    $mapImage = handleUpload($_FILES['map_image'], '../../uploads/', ($slug ?: 'trip') . '-map', false);
+                    // Add timestamp to map image for cache busting
+                    $mapImage = handleUpload($_FILES['map_image'], '../../uploads/', ($slug ?: 'trip') . '-map-' . time(), false);
                     if ($mapImage) { $sets[] = "`map_image` = ?"; $vals[] = $mapImage; }
                 }
 
@@ -361,6 +362,65 @@ try {
                 $pdo->prepare("UPDATE bookings SET status = ? WHERE id = ?")->execute([$status, $id]);
                 ResponseHelper::success([], 'Status updated');
             }
+            elseif ($action === 'update-payment-status' && $id) {
+                $status = $clean($input['status'] ?? '');
+                $allowed = ['Pending','Paid','Failed','Refunded'];
+                if (!in_array($status, $allowed)) ResponseHelper::error('Invalid payment status');
+                
+                try {
+                    $pdo->beginTransaction();
+                    
+                    // 1. Get or Generate invoice number if not existing
+                    $pCheck = $pdo->prepare("SELECT invoice_number FROM payments WHERE booking_id = ?");
+                    $pCheck->execute([$id]);
+                    $existingPayment = $pCheck->fetch();
+                    
+                    if ($existingPayment) {
+                        $inv = $existingPayment['invoice_number'];
+                    } else {
+                        // Get booking amount info for insert
+                        $bStmt = $pdo->prepare("SELECT total_price, currency_code FROM bookings WHERE id = ?");
+                        $bStmt->execute([$id]);
+                        $booking = $bStmt->fetch();
+                        if (!$booking) {
+                            $pdo->rollBack();
+                            ResponseHelper::error('Booking not found');
+                        }
+                        $amt = $booking['total_price'] ?: 0;
+                        $curr = $booking['currency_code'] ?: 'INR';
+                        $inv = 'INV-' . strtoupper(bin2hex(random_bytes(4)));
+                    }
+
+                    // 2. Insert or Update payment
+                    $stmt = $pdo->prepare("INSERT INTO payments (booking_id, status, amount, currency_code, invoice_number, paid_at) 
+                                           VALUES (:bid, :status, :amt, :curr, :inv, :paid_at)
+                                           ON DUPLICATE KEY UPDATE 
+                                               status = VALUES(status), 
+                                               paid_at = IF(VALUES(status)='Paid', COALESCE(paid_at, CURRENT_TIMESTAMP), paid_at)");
+                    
+                    $paidAt = ($status === 'Paid') ? date('Y-m-d H:i:s') : null;
+                    
+                    $stmt->execute([
+                        'bid'    => $id,
+                        'status' => $status,
+                        'amt'    => $amt ?? 0,
+                        'curr'   => $curr ?? 'INR',
+                        'inv'    => $inv,
+                        'paid_at'=> $paidAt
+                    ]);
+                    
+                    // 3. Sync booking status
+                    if ($status === 'Paid') {
+                        $pdo->prepare("UPDATE bookings SET status = 'Scheduled' WHERE id = ? AND status = 'Pending'")->execute([$id]);
+                    }
+                    
+                    $pdo->commit();
+                    ResponseHelper::success([], 'Payment status updated');
+                } catch (Exception $e) {
+                    if ($pdo->inTransaction()) $pdo->rollBack();
+                    ResponseHelper::error('Database error: ' . $e->getMessage());
+                }
+            }
             elseif ($action === 'delete' && $id) {
                 // Cascading delete for payments is handled by DB if configured, 
                 // but let's be explicit to be safe.
@@ -405,7 +465,7 @@ try {
                     if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
                 }
                 $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
-                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
+                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle . '-' . time(), false);
                 if ($img) { $sets[] = "`featured_image` = ?"; $vals[] = $img; }
 
                 if ($action === 'create') {
@@ -698,18 +758,44 @@ try {
                 $stmt = $pdo->query("SELECT * FROM site_settings ORDER BY category, s_key");
                 ResponseHelper::success($stmt->fetchAll());
             } elseif ($action === 'update') {
-                // Bulk update or single update
-                if (isset($input['settings']) && is_array($input['settings'])) {
-                    $stmt = $pdo->prepare("INSERT INTO site_settings (s_key, s_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE s_value = VALUES(s_value)");
-                    foreach ($input['settings'] as $key => $val) {
-                        $stmt->execute([$key, $val]);
+                $settings = $input['settings'] ?? $_POST;
+                $existing = $pdo->query("SELECT s_key, category FROM site_settings")->fetchAll(PDO::FETCH_KEY_PAIR);
+                $stmt = $pdo->prepare("INSERT INTO site_settings (s_key, s_value, category) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE s_value = VALUES(s_value)");
+
+                if (is_array($settings)) {
+                    foreach ($settings as $key => $val) {
+                        if (is_array($val)) continue; // Skip if it's somehow an array (except $_FILES)
+                        $cat = $existing[$key] ?? 'general';
+                        $stmt->execute([$key, $val, $cat]);
                     }
-                    ResponseHelper::success([], 'Settings updated');
-                } else {
-                    $pdo->prepare("UPDATE site_settings SET s_value = ? WHERE s_key = ?")
-                        ->execute([$input['value'], $input['key']]);
-                    ResponseHelper::success([], 'Setting updated');
                 }
+
+                if (!empty($_FILES)) {
+                    foreach ($_FILES as $key => $file) {
+                        // SEO Friendly naming for placeholders
+                        $prefix = $key;
+                        if (strpos($key, 'placeholder_') === 0) {
+                            $prefix = str_replace(['placeholder_', '_image', '_'], ['', '', '-'], $key) . '-dummy-img';
+                        }
+                        $img = handleUpload($file, '../../uploads/', $prefix, false);
+                        if ($img) {
+                            // Cleanup old file
+                            $stmtOld = $pdo->prepare("SELECT s_value FROM site_settings WHERE s_key = ?");
+                            $stmtOld->execute([$key]);
+                            $oldUrl = $stmtOld->fetchColumn();
+                            if ($oldUrl && $oldUrl !== $img) {
+                                deleteFile($oldUrl);
+                            }
+                            
+                            $cat = $existing[$key] ?? (strpos($key, 'placeholder') !== false ? 'placeholders' : 'general');
+                            $stmt->execute([$key, $img, $cat]);
+                        } else {
+                            ResponseHelper::error('Failed to upload file for ' . $key . '. Check folder permissions.');
+                            return;
+                        }
+                    }
+                }
+                ResponseHelper::success([], 'Settings updated');
             }
             break;
 
@@ -743,6 +829,27 @@ try {
                 ResponseHelper::success([], 'Marked as read');
             } elseif ($action === 'delete' && $id) {
                 $pdo->prepare("DELETE FROM contact_messages WHERE id=?")->execute([$id]);
+                ResponseHelper::success([], 'Deleted');
+            }
+            break;
+
+        // ---- GENERAL GALLERY ----
+        case 'gallery':
+            if ($action === 'list') {
+                $stmt = $pdo->query("SELECT * FROM gallery ORDER BY created_at DESC");
+                ResponseHelper::success($stmt->fetchAll());
+            } elseif ($action === 'create') {
+                $img = handleUpload($_FILES['file'] ?? null, '../../uploads/', 'gallery-item');
+                if (!$img) ResponseHelper::error('Upload failed');
+                
+                $stmt = $pdo->prepare("INSERT INTO gallery (image_url, category, caption) VALUES (?, ?, ?)");
+                $stmt->execute([$img, $input['category'] ?? 'General', $input['caption'] ?? '']);
+                ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Image added to gallery');
+            } elseif ($action === 'delete' && $id) {
+                $stmt = $pdo->prepare("SELECT image_url FROM gallery WHERE id = ?");
+                $stmt->execute([$id]);
+                deleteFile($stmt->fetchColumn());
+                $pdo->prepare("DELETE FROM gallery WHERE id = ?")->execute([$id]);
                 ResponseHelper::success([], 'Deleted');
             }
             break;

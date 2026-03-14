@@ -8,6 +8,7 @@ require_once __DIR__ . '/components/helpers.php';
 $pageTitle = 'About Us';
 $pageDesc  = 'Learn more about IBCC Trip, India\'s leading premium travel agency since 2010.';
 $activePage = 'about';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -85,7 +86,7 @@ require_once __DIR__ . '/layouts/header.php';
     <div class="relative z-10">
       <h2 class="text-3xl font-extrabold mb-4">Start Your Story With Us</h2>
       <p class="text-white/70 mb-8 max-w-xl mx-auto">Join thousands of satisfied travelers who discovered the world with IBCC Trip.</p>
-      <a href="<?= FRONTEND_URL ?>/trips.php" 
+      <a href="<?= FRONTEND_URL ?>/trips" 
          class="inline-block bg-secondary text-white font-extrabold px-10 py-4 rounded-2xl hover:bg-orange-600 transition-all shadow-xl shadow-secondary/20">
         Explore Packages
       </a>

@@ -17,6 +17,7 @@ if (!$slug) {
     $places = apiGet('locations.php', ['action' => 'places']);
     $pageTitle = 'Must-Visit Places';
     $activePage = 'destinations';
+    $transparent = true;
     require_once __DIR__ . '/layouts/head.php';
     require_once __DIR__ . '/layouts/header.php';
     ?>
@@ -36,13 +37,14 @@ if (!$slug) {
 }
 
 $resp = apiGetFull('locations.php', ['action' => 'place', 'slug' => $slug]);
-if (empty($resp['success'])) redirect(FRONTEND_URL . '/place.php');
+if (empty($resp['success'])) redirect(FRONTEND_URL . '/place');
 
 $place = $resp['data'] ?? [];
 $trips = $place['trips'] ?? [];
 
 $pageTitle = $place['name'] ?? 'Place';
 $activePage = 'destinations';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -53,10 +55,10 @@ require_once __DIR__ . '/layouts/header.php';
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
   <div class="absolute inset-0 flex flex-col justify-end pb-12 px-4 max-w-7xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
-      ['Home', FRONTEND_URL . '/index.php'],
-      ['Destinations', FRONTEND_URL . '/country.php'],
-      [$place['country_name'] ?? 'Country', FRONTEND_URL . '/country.php/' . ($place['country_slug'] ?? '')],
-      [$place['city_name'] ?? 'City', FRONTEND_URL . '/city.php/' . ($place['city_slug'] ?? '')],
+      ['Home', FRONTEND_URL . '/'],
+      ['Destinations', FRONTEND_URL . '/country'],
+      [$place['country_name'] ?? 'Country', FRONTEND_URL . '/country/' . ($place['country_slug'] ?? '')],
+      [$place['city_name'] ?? 'City', FRONTEND_URL . '/city/' . ($place['city_slug'] ?? '')],
       [$place['name'] ?? ''],
     ]); ?>
     <h1 class="text-4xl md:text-5xl font-black text-white mt-4"><?= e($place['name'] ?? '') ?></h1>
@@ -89,7 +91,7 @@ require_once __DIR__ . '/layouts/header.php';
         <div class="text-3xl mb-4">📍</div>
         <h3 class="font-extrabold text-gray-900 text-lg mb-2">Plan Your Visit</h3>
         <p class="text-gray-500 text-sm mb-6">Interested in visiting <?= e($place['name'] ?? '') ?>? Book a package that includes this destination.</p>
-        <a href="<?= FRONTEND_URL ?>/trips.php?q=<?= urlencode($place['name'] ?? '') ?>" 
+        <a href="<?= FRONTEND_URL ?>/trips?q=<?= urlencode($place['name'] ?? '') ?>" 
            class="block bg-primary text-white font-extrabold py-3.5 rounded-xl hover:bg-blue-800 transition-all shadow-lg shadow-primary/10">Browse Related Trips</a>
       </div>
     </aside>

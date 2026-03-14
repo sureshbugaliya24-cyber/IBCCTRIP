@@ -12,7 +12,7 @@ if (defined('IS_LIVE') && IS_LIVE == 1) {
     if (!defined('BASE_URL')) define('BASE_URL', 'https://ibcctrip.com');
     
     // Live DB (Update these when deploying)
-    if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+    if (!defined('DB_HOST')) define('DB_HOST', '127.0.0.1');
     if (!defined('DB_PORT')) define('DB_PORT', '3306');
     if (!defined('DB_NAME')) define('DB_NAME', 'ibcctrip'); 
     if (!defined('DB_USER')) define('DB_USER', 'root');
@@ -33,7 +33,7 @@ if (defined('IS_LIVE') && IS_LIVE == 1) {
     if (!defined('BASE_URL')) define('BASE_URL', $scheme . '://' . $host . rtrim($rootPath, '/'));
 
     // Local DB
-    if (!defined('DB_HOST')) define('DB_HOST', 'localhost');
+    if (!defined('DB_HOST')) define('DB_HOST', '127.0.0.1');
     if (!defined('DB_PORT')) define('DB_PORT', '3306');
     if (!defined('DB_NAME')) define('DB_NAME', 'ibcctrip');
     if (!defined('DB_USER')) define('DB_USER', 'root');

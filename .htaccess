@@ -7,7 +7,16 @@ RewriteRule ^(api|backend|admin|uploads|assets|css|js|images|core|database|compo
 # 2. Redirect /admin to the admin dashboard
 RewriteRule ^admin/?$ admin/dashboard.php [L]
 
-# 3. Remove .php extension from URL
+# 3. Clean URLs for Dynamic Pages
+# Example: /trip/rajasthan-tour => trip.php?slug=rajasthan-tour
+RewriteRule ^trip/([^/]+)/?$ trip.php?slug=$1 [L,QSA]
+RewriteRule ^blog/([^/]+)/?$ blog-single.php?slug=$1 [L,QSA]
+RewriteRule ^country/([^/]+)/?$ country.php?slug=$1 [L,QSA]
+RewriteRule ^state/([^/]+)/?$ state.php?slug=$1 [L,QSA]
+RewriteRule ^city/([^/]+)/?$ city.php?slug=$1 [L,QSA]
+RewriteRule ^place/([^/]+)/?$ place.php?slug=$1 [L,QSA]
+
+# 4. Remove .php extension from URL
 # Example: /trips => trips.php
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteCond %{REQUEST_FILENAME}\.php -f
@@ -20,7 +29,7 @@ RewriteRule ^index\.php$ ./ [R=301,L]
 DirectoryIndex index.php
 
 # 6. Custom Error 404
-ErrorDocument 404 /ibcctrip/index.php?error=404
+ErrorDocument 404 /ibcctrip/404.php
 
 # 7. Security - Prevent listing directories
 Options -Indexes

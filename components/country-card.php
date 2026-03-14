@@ -9,16 +9,15 @@ function renderCountryCard(array $c): void {
     $slug  = e($c['slug'] ?? '');
     $name  = e($c['name'] ?? 'Country');
     $flag  = e($c['flag_icon'] ?? '🌍');
-    $img   = e($c['featured_image'] ?? 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600');
+    $img   = img_url($c['featured_image'] ?? null, 'city');
     $count = (int)($c['trip_count'] ?? 0);
-    $url   = FRONTEND_URL . '/country.php/' . urlencode($c['slug'] ?? '');
+    $url   = FRONTEND_URL . '/country/' . urlencode($c['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"
    class="group relative block overflow-hidden rounded-2xl shadow-sm hover:shadow-2xl
           transition-all duration-300 border border-gray-100 aspect-[3/4]">
   <!-- BG Image -->
   <img src="<?= $img ?>" alt="<?= $name ?>" loading="lazy"
-       onerror="this.src='https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'"
        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
   <!-- Gradient -->
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>

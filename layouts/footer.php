@@ -22,7 +22,8 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
         </p>
         <!-- Social Links -->
         <div class="flex gap-3">
-          <a href="<?= FACEBOOK_URL ?>" target="_blank" rel="noopener"
+          <?php if (defined('FACEBOOK_URL') && constant('FACEBOOK_URL')): ?>
+          <a href="<?= constant('FACEBOOK_URL') ?>" target="_blank" rel="noopener"
              class="w-9 h-9 rounded-xl bg-gray-800 hover:bg-secondary flex items-center justify-center transition-colors group">
             <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125
@@ -31,7 +32,10 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
                        3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
             </svg>
           </a>
-          <a href="<?= INSTAGRAM_URL ?>" target="_blank" rel="noopener"
+          <?php endif; ?>
+          
+          <?php if (defined('INSTAGRAM_URL') && constant('INSTAGRAM_URL')): ?>
+          <a href="<?= constant('INSTAGRAM_URL') ?>" target="_blank" rel="noopener"
              class="w-9 h-9 rounded-xl bg-gray-800 hover:bg-secondary flex items-center justify-center transition-colors group">
             <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058
@@ -42,6 +46,27 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
                        10.162a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/>
             </svg>
           </a>
+          <?php endif; ?>
+          
+          <?php if (defined('TWITTER_URL') && constant('TWITTER_URL')): ?>
+          <a href="<?= constant('TWITTER_URL') ?>" target="_blank" rel="noopener"
+             class="w-9 h-9 rounded-xl bg-gray-800 hover:bg-secondary flex items-center justify-center transition-colors group">
+            <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.84 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+            </svg>
+          </a>
+          <?php endif; ?>
+          
+          <?php if (defined('YOUTUBE_URL') && constant('YOUTUBE_URL')): ?>
+          <a href="<?= constant('YOUTUBE_URL') ?>" target="_blank" rel="noopener"
+             class="w-9 h-9 rounded-xl bg-gray-800 hover:bg-red-600 flex items-center justify-center transition-colors group">
+            <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+            </svg>
+          </a>
+          <?php endif; ?>
+
+          <?php if (defined('WHATSAPP_NO') && WHATSAPP_NO): ?>
           <a href="https://wa.me/<?= WHATSAPP_NO ?>" target="_blank" rel="noopener"
              class="w-9 h-9 rounded-xl bg-gray-800 hover:bg-green-600 flex items-center justify-center transition-colors group">
             <svg class="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" fill="currentColor" viewBox="0 0 24 24">
@@ -52,10 +77,11 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
                        7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884
                        9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885
                        9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588
-                       5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821
+                       1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821
                        11.821 0 00-3.48-8.413z"/>
             </svg>
           </a>
+          <?php endif; ?>
         </div>
       </div>
 
@@ -116,9 +142,9 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
       <p>&copy; <?= date('Y') ?> <?= (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') ?> <?= (defined('SITE_NAME_PART2') ? SITE_NAME_PART2 : 'Trip') ?>. All rights reserved.</p>
       <div class="flex flex-wrap gap-4">
         <a href="<?= FRONTEND_URL ?>/about"   class="hover:text-gray-300 transition-colors">About</a>
-        <a href="#" class="hover:text-gray-300 transition-colors">Privacy Policy</a>
-        <a href="#" class="hover:text-gray-300 transition-colors">Terms & Conditions</a>
-        <a href="#" class="hover:text-gray-300 transition-colors">Refund Policy</a>
+        <a href="<?= FRONTEND_URL ?>/privacy" class="hover:text-gray-300 transition-colors">Privacy Policy</a>
+        <a href="<?= FRONTEND_URL ?>/terms" class="hover:text-gray-300 transition-colors">Terms & Conditions</a>
+        <a href="<?= FRONTEND_URL ?>/refund-policy" class="hover:text-gray-300 transition-colors">Refund Policy</a>
         <a href="<?= FRONTEND_URL ?>/sitemap" class="hover:text-gray-300 transition-colors">Sitemap</a>
       </div>
     </div>

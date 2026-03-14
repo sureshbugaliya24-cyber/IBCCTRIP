@@ -142,4 +142,4 @@ $fullTitle     = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . $siteFullName 
     };
   </script>
 </head>
-<body class="font-sans text-gray-900 overflow-x-hidden">
+<body class="font-sans text-gray-900 overflow-x-hidden <?= ($transparent ?? false) ? '' : 'pt-16 md:pt-20' ?>">

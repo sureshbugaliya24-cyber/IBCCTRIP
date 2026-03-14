@@ -8,6 +8,10 @@ require_once __DIR__ . '/components/trip-card.php';
 require_once __DIR__ . '/components/blog-card.php';
 require_once __DIR__ . '/components/country-card.php';
 require_once __DIR__ . '/components/testimonial-card.php';
+require_once __DIR__ . '/components/about-section.php';
+require_once __DIR__ . '/components/gallery-section.php';
+require_once __DIR__ . '/components/cta-section.php';
+require_once __DIR__ . '/components/map-section.php';
 
 // Fetch data server-side
 $featuredTrips = apiGet('trips.php', ['action' => 'featured', 'limit' => 6]);
@@ -133,6 +137,8 @@ require_once __DIR__ . '/layouts/header.php';
   </div>
 </section>
 
+<?= renderAboutSection() ?>
+
 <!-- ===== DESTINATIONS / COUNTRIES ===== -->
 <section class="bg-primary py-20">
   <div class="max-w-7xl mx-auto px-4">
@@ -159,6 +165,8 @@ require_once __DIR__ . '/layouts/header.php';
     </div>
   </div>
 </section>
+
+<?= renderGallerySection(8) ?>
 
 <!-- ===== HOW IT WORKS ===== -->
 <section class="py-20 bg-accent">
@@ -234,28 +242,9 @@ require_once __DIR__ . '/layouts/header.php';
 </section>
 <?php endif; ?>
 
-<!-- ===== CTA SECTION ===== -->
-<section class="py-20 bg-gradient-to-r from-primary to-blue-800 text-white text-center">
-  <div class="max-w-3xl mx-auto px-4">
-    <div class="text-5xl mb-5">✈️</div>
-    <h2 class="text-3xl md:text-4xl font-extrabold mb-4">Ready for Your Next Adventure?</h2>
-    <p class="text-white/80 text-lg mb-10">
-      Get a customized quote within 24 hours. No commitment required.
-    </p>
-    <div class="flex justify-center flex-wrap gap-4">
-      <a href="<?= FRONTEND_URL ?>/trips"
-         class="bg-secondary text-white font-extrabold px-8 py-4 rounded-2xl
-                hover:bg-orange-600 transition-colors shadow-xl">
-        Explore Packages
-      </a>
-      <a href="<?= FRONTEND_URL ?>/contact"
-         class="border-2 border-white text-white font-extrabold px-8 py-4 rounded-2xl
-                hover:bg-white/10 transition-colors">
-        Get Free Quote
-      </a>
-    </div>
-  </div>
-</section>
+<?= renderMapSection() ?>
+
+<?= renderCTASection() ?>
 
 <?php require_once __DIR__ . '/layouts/footer.php'; ?>
 
@@ -276,7 +265,7 @@ document.addEventListener('DOMContentLoaded', async function() {
       const r = await IBCC.trips.search(q);
       if (!r?.data?.length) { suggestions.classList.add('hidden'); return; }
       suggestions.innerHTML = r.data.map(t => `
-        <a href="<?= FRONTEND_URL ?>/trip.php/${encodeURIComponent(t.slug)}"
+        <a href="<?= FRONTEND_URL ?>/trip/${encodeURIComponent(t.slug)}"
            class="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0">
           <img src="${t.cover_image||''}" class="w-10 h-10 rounded-lg object-cover shrink-0">
           <div>

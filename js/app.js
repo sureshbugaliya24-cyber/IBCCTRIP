@@ -122,7 +122,10 @@ const IBCC = {
         updateSiteStat(id, data) { return IBCC.put('/admin.php?resource=site_stats&action=update&id=' + id, data); },
 
         getSiteSettings() { return IBCC.get('/admin.php', { resource: 'site_settings', action: 'list' }); },
-        updateSiteSettings(data) { return IBCC.post('/admin.php?resource=site_settings&action=update', { settings: data }); },
+        updateSiteSettings(data) { 
+            if (data instanceof FormData) return IBCC.post('/admin.php?resource=site_settings&action=update', data);
+            return IBCC.post('/admin.php?resource=site_settings&action=update', { settings: data }); 
+        },
 
         getBookings(params) { return IBCC.get('/admin.php', { resource: 'bookings', action: 'list', ...params }); },
         updateBooking(id, status) { return IBCC.put('/admin.php?resource=bookings&action=update-status&id=' + id, { status }); },
@@ -183,7 +186,7 @@ const Session = {
 
         if (this.isLoggedIn()) {
             const firstName = this.user.name.split(' ')[0];
-            const dashLink = this.isAdmin() ? dashboardBtn?.href.replace('/dashboard', '/admin/dashboard.php') : dashboardBtn?.href.replace('/admin/dashboard.php', '/dashboard.php');
+            const dashLink = this.isAdmin() ? dashboardBtn?.href.replace('/dashboard', '/admin/dashboard.php') : dashboardBtn?.href.replace('/admin/dashboard.php', '/dashboard');
             
             // Desktop
             if (loginBtn) loginBtn.style.display = 'none';
@@ -277,7 +280,7 @@ const Utils = {
         const origHtml = original ? `<span class="text-gray-400 line-through text-xs mr-1">${original}</span>` : '';
 
         return `
-        <article class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 group border border-gray-100 cursor-pointer" onclick="location.href='trip.php/${trip.slug}'">
+        <article class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 group border border-gray-100 cursor-pointer" onclick="location.href='trip/${trip.slug}'">
           <div class="relative overflow-hidden h-52">
             <img src="${trip.cover_image || 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'}"
                  alt="${trip.title}" loading="lazy"
@@ -306,7 +309,7 @@ const Utils = {
 
     blogCard(blog) {
         return `
-        <article class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-100" onclick="location.href='blog-single.php/${blog.slug}'">
+        <article class="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 group cursor-pointer border border-gray-100" onclick="location.href='blog/${blog.slug}'">
           <div class="relative overflow-hidden h-48">
             <img src="${blog.featured_image || 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'}"
                  alt="${blog.title}" loading="lazy"

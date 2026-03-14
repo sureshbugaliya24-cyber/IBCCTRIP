@@ -7,6 +7,7 @@ require_once __DIR__ . '/components/helpers.php';
 
 $pageTitle = 'My Dashboard';
 $activePage = 'dashboard';
+$transparent = false;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -50,8 +51,8 @@ require_once __DIR__ . '/layouts/header.php';
   }
 </style>
 
-<div class="max-w-7xl mx-auto px-4 py-10">
-  <div class="flex flex-col lg:flex-row gap-8">
+<div class="max-w-7xl mx-auto px-4 py-6 md:py-10">
+  <div class="flex flex-col lg:flex-row gap-6 md:gap-8">
     
     <!-- Sidebar -->
     <aside class="lg:w-72 shrink-0">
@@ -195,9 +196,9 @@ async function loadDashboardData() {
     renderBookings(response.data);
     
     // Fill profile
-    document.getElementById('prof-name').value  = currentUser.name;
-    document.getElementById('prof-phone').value = currentUser.phone;
-    document.getElementById('prof-email').value = currentUser.email;
+    document.getElementById('prof-name').value  = currentUser.name || '';
+    document.getElementById('prof-phone').value = currentUser.phone || '';
+    document.getElementById('prof-email').value = currentUser.email || '';
   }
 }
 

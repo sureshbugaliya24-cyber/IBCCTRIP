@@ -73,6 +73,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
       }
     };
   </script>
+  <script src="<?= ADMIN_URL ?>/cms-forms.js?v=<?= APP_VERSION ?>"></script>
 </head>
 <body class="flex min-h-screen">
 
@@ -104,6 +105,9 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
       </button>
       <button onclick="switchTab('destinations')" id="nav-destinations" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-gray-500 hover:bg-gray-50">
         <span>🌍</span> Destinations
+      </button>
+      <button onclick="switchTab('gallery')" id="nav-gallery" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-gray-500 hover:bg-gray-50">
+        <span>🖼️</span> Gallery
       </button>
       <button onclick="switchTab('blogs')" id="nav-blogs" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-gray-500 hover:bg-gray-50">
         <span>📝</span> Blogs
@@ -171,6 +175,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
   <script src="<?= FRONTEND_URL ?>/admin/cms-forms.js"></script>
   <script>
     // Minimalistic dashboard state handler (converted from dashboard.html logic)
+    const API_URL = window.APP_CONFIG.API_URL;
     let currentTab = 'overview';
     const API = IBCC;
 
@@ -208,6 +213,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
       else if (tabId === 'customers') loadCustomers();
       else if (tabId === 'users') loadUsers();
       else if (tabId === 'messages') loadMessages();
+      else if (tabId === 'gallery') loadGallery();
     }
 
     function renderOverview(data) {
@@ -338,13 +344,14 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
         document.getElementById('page-content').innerHTML = `
         <div class="card overflow-hidden">
           <table class="w-full tbl text-left">
-            <thead class="bg-gray-50 border-b border-gray-100"><tr><th class="p-4">Ref</th><th class="p-4">Customer</th><th class="p-4">Trip</th><th class="p-4">Amount</th><th class="p-4">Status</th><th class="p-4">Action</th></tr></thead>
+            <thead class="bg-gray-50 border-b border-gray-100"><tr><th class="p-4">Ref</th><th class="p-4">Customer</th><th class="p-4">Trip</th><th class="p-4">Amount</th><th class="p-4">B. Status</th><th class="p-4">P. Status</th><th class="p-4">Action</th></tr></thead>
             <tbody>${list.map(b => `<tr>
               <td class="p-4 font-bold text-primary cursor-pointer hover:underline" onclick="viewBooking(${b.id})">#${b.booking_ref||b.id}</td>
               <td class="p-4">${b.customer_name||b.full_name}</td>
               <td class="p-4 line-clamp-1">${b.trip_title}</td>
               <td class="p-4 font-bold text-green-600">₹${Number(b.total_price||b.total_amount||0).toLocaleString()}</td>
               <td class="p-4">${Utils.statusBadge(b.status)}</td>
+              <td class="p-4">${Utils.statusBadge(b.payment_status || 'Pending')}</td>
               <td class="p-4">
                 <div class="flex items-center gap-2">
                     <select onchange="updateBookingStatus(${b.id}, this.value)" class="text-[10px] border rounded-lg p-1 outline-none focus:ring-2 focus:ring-primary/20 bg-white">
@@ -359,7 +366,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
                     </button>
                 </div>
               </td>
-            </tr>`).join('') || '<tr><td colspan="6" class="text-center text-gray-400 py-10">No bookings found</td></tr>'}</tbody>
+            </tr>`).join('') || '<tr><td colspan="7" class="text-center text-gray-400 py-10">No bookings found</td></tr>'}</tbody>
           </table>
         </div>`;
     }
@@ -426,13 +433,43 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
                 </div>
                 ` : ''}
 
-                <div class="flex gap-3 pt-4">
-                    <button onclick="CRUD.close()" class="flex-1 bg-gray-100 text-gray-700 font-bold py-3 rounded-2xl hover:bg-gray-200 transition-colors">Close</button>
-                    <button onclick="window.print()" class="flex-1 bg-primary text-white font-bold py-3 rounded-2xl hover:bg-blue-800 transition-colors">Print Invoice</button>
+                <div class="flex flex-wrap gap-3 pt-4">
+                    <div class="flex-1 flex items-center gap-2">
+                        <select onchange="updatePaymentStatus(${b.id}, this.value)" class="flex-1 border-2 border-primary/20 rounded-2xl py-3 px-4 text-sm font-bold text-primary focus:border-primary outline-none">
+                            <option value="">Update Payment Status...</option>
+                            <option value="Pending" ${b.payment_status==='Pending'?'selected':''}>Pending</option>
+                            <option value="Paid" ${b.payment_status==='Paid'?'selected':''}>Paid</option>
+                            <option value="Failed" ${b.payment_status==='Failed'?'selected':''}>Failed</option>
+                            <option value="Refunded" ${b.payment_status==='Refunded'?'selected':''}>Refunded</option>
+                        </select>
+                    </div>
+                    <button onclick="window.print()" class="bg-gray-100 text-gray-700 font-bold px-6 py-3 rounded-2xl hover:bg-gray-200 transition-colors">Print</button>
+                    <button onclick="CRUD.close()" class="bg-primary text-white font-bold px-8 py-3 rounded-2xl hover:bg-blue-800 transition-colors shadow-lg">Done</button>
                 </div>
             </div>
         `;
         CRUD.show('Booking Details', detailsHtml);
+    };
+
+    window.updatePaymentStatus = async (id, status) => {
+        if(!status) return;
+        if(!confirm('Update payment status to ' + status + '?')) return;
+        const r = await fetch(API_URL + '/admin.php?resource=bookings&action=update-payment-status&id=' + id, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: status }),
+            credentials: 'include'
+        }).then(res => res.json());
+        
+        if(r.success) { 
+            Utils.toast('Payment status updated'); 
+            // Refresh current view if possible or reload bookings
+            if (currentTab === 'bookings') loadBookings();
+            else switchTab('overview');
+            CRUD.close();
+        } else {
+            Utils.toast(r.message || 'Update failed', 'error');
+        }
     };
 
     // --- GLOBAL REFS for DROPDOWNS ---
@@ -701,8 +738,16 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
         btn.disabled = true; btn.textContent = 'Saving...';
         const data = { stat_label: document.getElementById('s-label').value, stat_value: document.getElementById('s-value').value };
         const r = await API.admin.updateSiteStat(id, data);
-        if(r.success) { Utils.toast('Stat updated'); CRUD.close(); loadSiteStats(); }
-        else { btn.disabled = false; btn.textContent = 'Save Changes'; }
+        btn.textContent = 'Save Changes'; // Revert button text
+        btn.disabled = false; // Re-enable button
+        
+        if (r.success) {
+            Utils.toast('Stat updated successfully');
+            CRUD.close();
+            loadSiteStats();
+        } else {
+            Utils.toast(r.message || 'Failed to update stat', 'error');
+        }
     };
 
     // --- SITE SETTINGS ---
@@ -741,21 +786,43 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
                     <div id="cat-${cat}" class="card p-8 scroll-mt-20">
                         <div class="flex items-center gap-3 mb-8">
                             <div class="w-10 h-10 rounded-2xl bg-primary/10 flex items-center justify-center text-primary text-xl">
-                                ${cat === 'payment' ? '💳' : cat === 'branding' ? '🏷️' : cat === 'contact' ? '📞' : cat === 'style' ? '🎨' : '⚙️'}
+                                ${cat === 'payment' ? '💳' : cat === 'branding' ? '🏷️' : cat === 'contact' ? '📞' : cat === 'style' ? '🎨' : cat === 'placeholders' ? '🖼️' : '⚙️'}
                             </div>
                             <h4 class="text-lg font-black text-gray-900 uppercase tracking-tight">${cat} Settings</h4>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            ${groups[cat].map(s => {
-                                const isToggle = s.s_key.includes('enabled');
-                                const isSecret = s.s_key.includes('secret') || s.s_key.includes('key');
-                                const label = s.s_key.replace(/_/g,' ').replace('payment ','');
+                            ${(cat === 'placeholders' 
+                                ? groups[cat].filter(s => ['placeholder_blog_image', 'placeholder_destination_image', 'placeholder_trip_cover_image', 'placeholder_trip_map_image', 'placeholder_trip_gallery_image'].includes(s.s_key)) 
+                                : groups[cat]).map(s => {
+                                 const isToggle   = s.s_key.includes('enabled');
+                                 const isSecret   = s.s_key.includes('secret') || s.s_key.includes('key');
+                                 const isTextarea = s.s_key === 'site_icon_svg' || s.s_key.includes('address');
+                                 const isImage    = !isTextarea && (s.s_key.includes('placeholder') || s.s_key.includes('logo') || s.s_key.includes('icon'));
+                                const labelMap = {
+                                    'placeholder_blog_image': '1. Blog Image Thumbnail',
+                                    'placeholder_destination_image': '2. Destination Image',
+                                    'placeholder_trip_cover_image': '3. Trip Cover Image',
+                                    'placeholder_trip_map_image': '4. Trip Map Image',
+                                    'placeholder_trip_gallery_image': '5. Trip Gallery Image',
+                                    'site_icon_svg': 'Brand Icon SVG (Manual Code)'
+                                };
+                                 const label = labelMap[s.s_key] || s.s_key.replace(/_/g,' ').replace('payment ','').replace('placeholder ','');
+                                 
+                                 // Robust Image Pathing
+                                 const getImgUrl = (url) => {
+                                     if (!url) return '';
+                                     if (url.startsWith('http')) return url;
+                                     const base = window.APP_CONFIG?.BASE_URL || window.location.origin + '/IBCCTRIP'; // Default to /IBCCTRIP if APP_CONFIG.BASE_URL is not set
+                                     return base.replace(/\/$/, '') + '/' + url.replace(/^\//, '');
+                                 };
+                                 const imgUrl = getImgUrl(s.s_value);
                                 
                                 return `
-                                    <div class="${isToggle ? 'flex items-center justify-between bg-gray-50/50 p-4 rounded-2xl border border-gray-100' : ''}">
-                                        <div class="${isToggle ? '' : 'space-y-2'}">
-                                            <label class="block text-[10px] font-black uppercase tracking-widest ${isToggle ? 'text-gray-900' : 'text-gray-400'}">${label}</label>
+                                    <div class="${isToggle || isImage ? 'flex items-center justify-between bg-gray-50/50 p-4 rounded-2xl border border-gray-100' : ''} ${isImage ? 'col-span-2' : ''}">
+                                        <div class="${isToggle || isImage ? '' : 'space-y-2'}">
+                                            <label class="block text-[10px] font-black uppercase tracking-widest ${isToggle || isImage ? 'text-gray-900' : 'text-gray-400'}">${label}</label>
                                             ${isToggle ? `<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">Turn this feature ON or OFF</p>` : ''}
+                                            ${isImage ? `<p class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">SEO Dummy Image Fallback</p>` : ''}
                                         </div>
                                         
                                         ${isToggle ? `
@@ -763,6 +830,23 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
                                                 <input type="checkbox" data-key="${s.s_key}" class="sr-only peer" ${s.s_value === '1' ? 'checked' : ''}>
                                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                                             </label>
+                                        ` : isImage ? `
+                                             <div class="relative w-32 h-32 group cursor-pointer border-2 border-dashed border-gray-200 rounded-2xl overflow-hidden bg-gray-50 flex items-center justify-center" 
+                                                  onclick="this.querySelector('input').click()">
+                                                 <img id="${s.s_key}-prev" src="${imgUrl}" class="w-full h-full object-cover ${s.s_value?'':'hidden'}">
+                                                 <div id="${s.s_key}-placeholder" class="text-center ${s.s_value?'hidden':''}">
+                                                     <span class="text-2xl text-gray-300">📷</span>
+                                                     <p class="text-[9px] text-gray-400 font-bold uppercase mt-1">Select</p>
+                                                 </div>
+                                                 <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
+                                                     <span class="text-xs font-bold uppercase tracking-tighter">${s.s_value?'Replace':'Upload'}</span>
+                                                 </div>
+                                                 <input type="file" data-key="${s.s_key}" accept="image/*" class="hidden" onchange="previewImage(this, '${s.s_key}-prev', '${s.s_key}-placeholder')">
+                                             </div>
+                                         ` : isTextarea ? `
+                                             <textarea data-key="${s.s_key}" rows="5" 
+                                                       class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3.5 px-5 text-sm font-mono focus:outline-none focus:border-primary focus:bg-white transition-all"
+                                                       placeholder="Paste information here...">${esc(s.s_value)}</textarea>
                                         ` : `
                                             <input type="${isSecret ? 'password' : 'text'}" 
                                                    data-key="${s.s_key}" 
@@ -785,31 +869,143 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
             </form>
         </div>`;
     }
+    
     window.saveSiteSettings = async (e) => {
         e.preventDefault();
         const btn = e.target.querySelector('button');
         btn.disabled = true; btn.textContent = 'Saving...';
         
-        const settings = {};
-        e.target.querySelectorAll('input').forEach(inp => { 
+        const fd = new FormData();
+        const files = {};
+        
+        // First pass: gather files
+        e.target.querySelectorAll('input[type="file"]').forEach(inp => {
+            if (inp.files[0]) {
+                const key = inp.dataset.key;
+                fd.append(key, inp.files[0]);
+                files[key] = true;
+            }
+        });
+
+        // Second pass: gather other fields, skip text value if file exists for same key
+        e.target.querySelectorAll('[data-key]').forEach(inp => { 
+            const key = inp.dataset.key;
+            if (inp.type === 'file') return; // Handled in first pass
+            
             if (inp.type === 'checkbox') {
-                settings[inp.dataset.key] = inp.checked ? '1' : '0';
+                fd.append(key, inp.checked ? '1' : '0');
             } else {
-                settings[inp.dataset.key] = inp.value; 
+                // Only send text value if no file was selected for this key
+                if (!files[key]) {
+                    fd.append(key, inp.value);
+                }
             }
         });
 
         try {
-            const r = await API.admin.updateSiteSettings(settings);
-            if(r.success) {
-                Utils.toast('Global settings updated');
-                // Refresh list to ensure UI matches state
+            const r = await API.admin.updateSiteSettings(fd);
+            btn.textContent = 'Save Configuration';
+            btn.disabled = false;
+            
+            if (r.success) {
+                Utils.toast('Settings updated successfully');
                 loadSiteSettings();
+            } else {
+                Utils.toast(r.message || 'Failed to update settings', 'error');
             }
         } catch (err) {
             Utils.toast('Connection error', 'error');
-        } finally {
             btn.disabled = false; btn.textContent = 'Save Configuration';
+        }
+    };
+    
+    // --- GALLERY ---
+    async function loadGallery() {
+        try {
+            const r = await fetch(API_URL + '/admin.php?resource=gallery&action=list', { credentials: 'include' }).then(res => res.json());
+            const list = r?.data || [];
+            
+            document.getElementById('page-content').innerHTML = `
+            <div class="flex items-center justify-between mb-8">
+                <div><h3 class="text-2xl font-black text-gray-900 uppercase tracking-tight">Gallery Media</h3><p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest mt-1">Manage global site media assets</p></div>
+                <button onclick="addGalleryImage()" class="bg-primary text-white font-black px-8 py-3.5 rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-[10px] uppercase tracking-widest whitespace-nowrap">+ Upload New</button>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-6">
+                ${list.map(img => `
+                    <div class="group relative aspect-square bg-white rounded-3xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl transition-all">
+                        <img src="${img.image_url}" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all flex flex-col items-center justify-center p-4">
+                            <span class="text-[9px] text-white/50 font-bold uppercase tracking-widest mb-1">Category</span>
+                            <p class="text-[11px] text-white font-black uppercase tracking-widest mb-4 line-clamp-1">${img.category || 'General'}</p>
+                            <button onclick="deleteEntity('gallery', ${img.id})" class="bg-red-500 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 transition-all border-2 border-white/20 shadow-lg">Delete</button>
+                        </div>
+                    </div>
+                `).join('') || '<div class="col-span-full py-20 text-center text-gray-400 font-black uppercase tracking-widest border-2 border-dashed border-gray-200 rounded-3xl">Your media gallery is empty</div>'}
+            </div>
+        `;
+        } catch (err) {
+            console.error(err);
+            document.getElementById('page-content').innerHTML = `
+                <div class="py-20 text-center">
+                    <p class="text-red-500 font-bold uppercase tracking-widest">Error Loading Gallery</p>
+                    <p class="text-xs text-gray-400 mt-2">${err.message}</p>
+                </div>
+            `;
+        }
+    }
+
+    window.addGalleryImage = () => {
+        CRUD.show('Add Media', `
+            <form onsubmit="saveGalleryImage(event)" class="space-y-6">
+                <div class="space-y-4">
+                    <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1">Upload File</label>
+                    <div class="flex justify-center">
+                        ${renderImagePicker('g-file')}
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1 mb-2">Category</label>
+                    <input type="text" id="g-category" placeholder="e.g. India, Adventure, Hotel" class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3.5 px-5 text-sm font-medium focus:outline-none focus:border-primary">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-gray-400 tracking-widest ml-1 mb-2">Caption (Optional)</label>
+                    <input type="text" id="g-caption" placeholder="Short description..." class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-3.5 px-5 text-sm font-medium focus:outline-none focus:border-primary">
+                </div>
+                <button type="submit" class="w-full bg-primary text-white font-black uppercase tracking-widest py-4 rounded-2xl shadow-xl hover:shadow-2xl transition-all">Upload to Gallery</button>
+            </form>
+        `);
+    };
+
+    window.saveGalleryImage = async (e) => {
+        e.preventDefault();
+        const btn = e.target.querySelector('button');
+        const fileInp = document.getElementById('g-file');
+        
+        if (!fileInp.files[0]) return Utils.toast('Please select an image', 'error');
+        
+        btn.disabled = true; btn.textContent = 'Uploading...';
+        
+        const fd = new FormData();
+        fd.append('file', fileInp.files[0]);
+        fd.append('category', document.getElementById('g-category').value);
+        fd.append('caption', document.getElementById('g-caption').value);
+        
+        try {
+            const r = await fetch(API_URL + '/admin.php?resource=gallery&action=create', {
+                method: 'POST',
+                body: fd,
+                credentials: 'include'
+            }).then(res => res.json());
+            
+            if(r.success) {
+                Utils.toast('Media added to gallery');
+                CRUD.close();
+                loadGallery();
+            }
+        } catch (err) {
+            Utils.toast('Upload error', 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Upload to Gallery';
         }
     };
 
@@ -947,6 +1143,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
         else if(type==='bookings') r = await API.admin.deleteBooking(id);
         else if(type==='testimonials') r = await API.admin.deleteTestimonial(id);
         else if(type==='messages') r = await API.admin.deleteMessage(id);
+        else if(type==='gallery') r = await fetch(API_URL + '/admin.php?resource=gallery&action=delete&id=' + id, { method: 'POST', credentials: 'include' }).then(res => res.json());
         else r = await API.admin.deleteDestination(type, id);
         
         if(r?.success) {
@@ -956,6 +1153,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
             else if(type==='bookings') loadBookings();
             else if(type==='testimonials') loadTestimonials();
             else if(type==='messages') loadMessages();
+            else if(type==='gallery') loadGallery();
             else loadDestinations(type);
         } else {
             Utils.toast(r?.message || 'Delete failed', 'error');

@@ -25,3 +25,4 @@ if (!defined('CONTACT_ADDRESS')) define('CONTACT_ADDRESS', '123, Travel Hub, Con
 if (!defined('FACEBOOK_URL'))  define('FACEBOOK_URL',  '#');
 if (!defined('INSTAGRAM_URL')) define('INSTAGRAM_URL', '#');
 if (!defined('TWITTER_URL'))   define('TWITTER_URL',   '#');
+if (!defined('YOUTUBE_URL'))   define('YOUTUBE_URL',   '#');

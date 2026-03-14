@@ -38,6 +38,7 @@ $pageDesc     = $blog['meta_description'] ?: ($blog['excerpt'] ?? '');
 $ogImage      = $blog['featured_image'] ?? '';
 $pageKeywords = $blog['meta_keywords'] ?? '';
 $activePage   = 'blog';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -52,8 +53,8 @@ require_once __DIR__ . '/layouts/header.php';
 
   <div class="absolute inset-0 flex flex-col justify-end pb-10 px-4 max-w-4xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
-      ['Home', FRONTEND_URL . '/index.php'],
-      ['Blog', FRONTEND_URL . '/blog.php'],
+      ['Home', FRONTEND_URL . '/'],
+      ['Blog', FRONTEND_URL . '/blog'],
       [$blog['title'] ?? ''],
     ]); ?>
     <?php if (!empty($blog['category_name'])): ?>
@@ -113,13 +114,13 @@ require_once __DIR__ . '/layouts/header.php';
         <!-- Share -->
         <div class="mt-8 pt-6 border-t border-gray-100 flex items-center gap-3">
           <span class="text-sm font-semibold text-gray-500">Share:</span>
-          <a href="https://facebook.com/sharer.php?u=<?= urlencode(FRONTEND_URL . '/blog-single.php/' . $slug) ?>"
+          <a href="https://facebook.com/sharer.php?u=<?= urlencode(FRONTEND_URL . '/blog/' . $slug) ?>"
              target="_blank" rel="noopener"
              class="w-9 h-9 bg-blue-600 rounded-lg flex items-center justify-center text-white hover:bg-blue-700 transition-colors">f</a>
-          <a href="https://twitter.com/intent/tweet?text=<?= urlencode($blog['title'] ?? '') ?>&url=<?= urlencode(FRONTEND_URL . '/blog-single.php/' . $slug) ?>"
+          <a href="https://twitter.com/intent/tweet?text=<?= urlencode($blog['title'] ?? '') ?>&url=<?= urlencode(FRONTEND_URL . '/blog/' . $slug) ?>"
              target="_blank" rel="noopener"
              class="w-9 h-9 bg-sky-500 rounded-lg flex items-center justify-center text-white hover:bg-sky-600 transition-colors">𝕏</a>
-          <a href="https://wa.me/?text=<?= urlencode(($blog['title'] ?? '') . ' ' . FRONTEND_URL . '/blog-single.php/' . $slug) ?>"
+          <a href="https://wa.me/?text=<?= urlencode(($blog['title'] ?? '') . ' ' . FRONTEND_URL . '/blog/' . $slug) ?>"
              target="_blank" rel="noopener"
              class="w-9 h-9 bg-green-500 rounded-lg flex items-center justify-center text-white hover:bg-green-600 transition-colors">W</a>
         </div>
@@ -135,7 +136,7 @@ require_once __DIR__ . '/layouts/header.php';
         <h3 class="font-extrabold text-gray-900 mb-4">Related Articles</h3>
         <div class="space-y-4">
           <?php foreach ($related as $rb): ?>
-          <a href="<?= FRONTEND_URL ?>/blog-single.php/<?= urlencode($rb['slug'] ?? '') ?>"
+          <a href="<?= FRONTEND_URL ?>/blog/<?= urlencode($rb['slug'] ?? '') ?>"
              class="flex gap-3 hover:bg-gray-50 rounded-xl p-2 transition-colors group">
             <img src="<?= e($rb['featured_image'] ?? '') ?>"
                  class="w-14 h-14 rounded-xl object-cover shrink-0 group-hover:scale-105 transition-transform"
@@ -157,7 +158,7 @@ require_once __DIR__ . '/layouts/header.php';
         <div class="text-4xl mb-3">✈️</div>
         <h4 class="font-extrabold text-xl mb-2">Plan Your Trip</h4>
         <p class="text-white/70 text-sm mb-5">Inspired? Browse our curated packages.</p>
-        <a href="<?= FRONTEND_URL ?>/trips.php"
+        <a href="<?= FRONTEND_URL ?>/trips"
            class="block bg-secondary text-white font-extrabold py-3 rounded-xl hover:bg-orange-600 transition-colors text-sm">
           Browse Trips →
         </a>

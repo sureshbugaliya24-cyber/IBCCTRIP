@@ -15,11 +15,11 @@ function renderBlogCard(array $blog, string $size = 'normal'): void {
     $author   = e($blog['author'] ?? 'IBCC Trip Team');
     $catName  = e($blog['category_name'] ?? '');
     $catSlug  = e($blog['category_slug']  ?? '');
-    $img      = e($blog['featured_image'] ?? 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600');
+    $img      = img_url($blog['featured_image'] ?? null, 'blog');
     $date     = formatDate($blog['created_at'] ?? '');
     $country  = e($blog['country_name'] ?? '');
 
-    $url = FRONTEND_URL . '/blog-single.php/' . urlencode($blog['slug'] ?? '');
+    $url = FRONTEND_URL . '/blog/' . urlencode($blog['slug'] ?? '');
     $catUrl = $catSlug ? FRONTEND_URL . '/blog.php?category=' . $catSlug : FRONTEND_URL . '/blog.php';
     ?>
 <article class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl
@@ -29,7 +29,6 @@ function renderBlogCard(array $blog, string $size = 'normal'): void {
     <img src="<?= $img ?>"
          alt="<?= $title ?>"
          loading="lazy"
-         onerror="this.src='https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'"
          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
     <div class="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
     <?php if ($country): ?>

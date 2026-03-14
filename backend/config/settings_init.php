@@ -30,12 +30,24 @@ $mappings = [
     'COLOR_PRIMARY'   => 'color_primary',
     'COLOR_SECONDARY' => 'color_secondary',
     'SITE_ICON_SVG'   => 'site_icon_svg',
+    'COMPANY_NAME'    => 'company_name',
+    'COMPANY_GST'     => 'company_gst',
     
     // Payments
     'PAYMENT_RAZORPAY_ENABLED' => 'payment_razorpay_enabled',
     'PAYMENT_RAZORPAY_KEY'     => 'payment_razorpay_key',
     'PAYMENT_RAZORPAY_SECRET'  => 'payment_razorpay_secret',
-    'PAYMENT_COD_ENABLED'      => 'payment_cod_enabled'
+    'PAYMENT_COD_ENABLED'      => 'payment_cod_enabled',
+    
+    // Social
+    'TWITTER_URL'  => 'twitter_url',
+    'YOUTUBE_URL'  => 'youtube_url',
+    
+    // Placeholders
+    'PLACEHOLDER_GENERAL' => 'placeholder_general',
+    'PLACEHOLDER_TRIP'    => 'placeholder_trip',
+    'PLACEHOLDER_BLOG'    => 'placeholder_blog',
+    'PLACEHOLDER_CITY'    => 'placeholder_city'
 ];
 
 foreach ($mappings as $const => $key) {
@@ -47,3 +59,7 @@ foreach ($mappings as $const => $key) {
 if (!defined('APP_NAME')) {
     define('APP_NAME', (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 . ' ' . SITE_NAME_PART2 : 'IBCC Trip'));
 }
+
+if (!defined('COLOR_PRIMARY')) define('COLOR_PRIMARY', '#1E1B7A');
+if (!defined('COLOR_SECONDARY')) define('COLOR_SECONDARY', '#f97316');
+

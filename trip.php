@@ -10,7 +10,7 @@ $slug = qParam('slug');
 if (!$slug && isset($_SERVER['PATH_INFO'])) {
     $slug = trim($_SERVER['PATH_INFO'], '/');
 }
-if (!$slug) { redirect(FRONTEND_URL . '/trips.php'); }
+if (!$slug) { redirect(FRONTEND_URL . '/trips'); }
 
 $tripResp = apiGetFull('trips.php', ['action' => 'detail', 'slug' => $slug]);
 if (empty($tripResp['success'])) {
@@ -23,7 +23,7 @@ if (empty($tripResp['success'])) {
             <div class="text-6xl mb-5">😕</div>
             <h1 class="text-2xl font-extrabold text-gray-900 mb-3">Trip Not Found</h1>
             <p class="text-gray-400 mb-6">This trip may have been removed or the link is wrong.</p>
-            <a href="' . FRONTEND_URL . '/trips.php" class="bg-primary text-white font-bold px-6 py-3 rounded-xl">← Browse All Trips</a>
+            <a href="' . FRONTEND_URL . '/trips" class="bg-primary text-white font-bold px-6 py-3 rounded-xl">← Browse All Trips</a>
           </div>';
     require_once __DIR__ . '/layouts/footer.php';
     echo '<script src="' . FRONTEND_URL . '/js/app.js?v=<?= APP_VERSION ?>"></script></body></html>';
@@ -42,6 +42,7 @@ $pageTitle   = $trip['title'] ?? 'Trip Detail';
 $pageDesc    = $trip['meta_description'] ?: ($trip['short_description'] ?: 'Book ' . $pageTitle . ' with IBCC Trip.');
 $ogImage     = $trip['cover_image'] ?? '';
 $activePage  = 'trips';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -49,7 +50,7 @@ require_once __DIR__ . '/layouts/header.php';
 
 <!-- ===== HERO ===== -->
 <div class="relative h-[70vh] min-h-[400px] max-h-[650px] overflow-hidden -mt-0">
-  <img src="<?= e($trip['cover_image'] ?? '') ?>"
+  <img src="<?= img_url($trip['cover_image'] ?? null, 'trip') ?>"
        alt="<?= e($trip['title'] ?? '') ?>"
        class="w-full h-full object-cover">
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>
@@ -57,9 +58,9 @@ require_once __DIR__ . '/layouts/header.php';
   <div class="absolute inset-0 flex flex-col justify-end pb-10 px-4 md:px-10 max-w-7xl mx-auto left-0 right-0">
     <!-- Breadcrumb -->
     <?php renderBreadcrumb([
-      ['Home',  FRONTEND_URL . '/index.php'],
-      ['Trips', FRONTEND_URL . '/trips.php'],
-      [$trip['country_name'] ?? 'Destinations', $trip['country_slug'] ? FRONTEND_URL . '/country.php?slug=' . $trip['country_slug'] : ''],
+      ['Home',  FRONTEND_URL . '/'],
+      ['Trips', FRONTEND_URL . '/trips'],
+      [$trip['country_name'] ?? 'Destinations', $trip['country_slug'] ? FRONTEND_URL . '/country/' . $trip['country_slug'] : ''],
       [$trip['title'] ?? '', ''],
     ]); ?>
 
@@ -149,7 +150,7 @@ require_once __DIR__ . '/layouts/header.php';
         <div class="mt-5 bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h3 class="font-extrabold text-gray-900 mb-3">📍 Route Map</h3>
           <div class="rounded-xl overflow-hidden border border-gray-100 aspect-video bg-gray-50 flex items-center justify-center relative group cursor-pointer" onclick="document.getElementById('map-lightbox-img').src=this.querySelector('img').src; document.getElementById('map-lightbox').classList.remove('hidden'); document.getElementById('map-lightbox').style.display='flex';">
-             <img src="<?= e($trip['map_image'] ?? $trip['cover_image'] ?? 'https://images.unsplash.com/photo-1524661135-423995f22d0b?w=800') ?>" 
+             <img src="<?= img_url($trip['map_image'] ?? null, 'trip') ?>" 
                   alt="Route Map for <?= e($trip['title']) ?>" 
                   class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
              <div class="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
@@ -243,11 +244,20 @@ require_once __DIR__ . '/layouts/header.php';
         </div>
       </div>
 
-      <!-- Gallery -->
       <div id="panel-gallery" class="tab-panel hidden">
-        <?php if (count($gallery) > 0): ?>
+        <?php 
+        $displayGallery = $gallery;
+        if (empty($displayGallery)) {
+            $placeholder = img_url(null, 'trip');
+            $displayGallery = [
+                ['image_url' => $placeholder],
+                ['image_url' => $placeholder],
+                ['image_url' => $placeholder]
+            ];
+        }
+        ?>
         <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <?php foreach ($gallery as $img): ?>
+          <?php foreach ($displayGallery as $img): ?>
           <a href="<?= e($img['image_url'] ?? '') ?>"
              class="lightbox-img block overflow-hidden rounded-2xl aspect-[4/3] cursor-zoom-in group">
             <img src="<?= e($img['image_url'] ?? '') ?>"
@@ -257,9 +267,6 @@ require_once __DIR__ . '/layouts/header.php';
           </a>
           <?php endforeach; ?>
         </div>
-        <?php else: ?>
-        <p class="text-gray-400 text-center py-10">Gallery photos will be shared soon.</p>
-        <?php endif; ?>
       </div>
 
       <!-- Videos -->
@@ -427,7 +434,7 @@ require_once __DIR__ . '/layouts/header.php';
           <h3 class="font-extrabold text-gray-900 mb-4">You Might Also Like</h3>
           <div class="space-y-3">
             <?php foreach (array_slice($related, 0, 3) as $r): ?>
-            <a href="<?= FRONTEND_URL ?>/trip.php/<?= urlencode($r['slug'] ?? '') ?>"
+            <a href="<?= FRONTEND_URL ?>/trip/<?= urlencode($r['slug'] ?? '') ?>"
                class="flex gap-3 hover:bg-gray-50 rounded-xl p-2 transition-colors">
               <img src="<?= e($r['cover_image'] ?? '') ?>"
                    class="w-14 h-14 rounded-lg object-cover shrink-0" loading="lazy">
@@ -447,7 +454,7 @@ require_once __DIR__ . '/layouts/header.php';
           <h3 class="font-extrabold text-gray-900 mb-4">Travel Stories</h3>
           <div class="space-y-3">
             <?php foreach (array_slice($related_blogs, 0, 3) as $rb): ?>
-            <a href="<?= FRONTEND_URL ?>/blog-single.php/<?= urlencode($rb['slug'] ?? '') ?>"
+            <a href="<?= FRONTEND_URL ?>/blog/<?= urlencode($rb['slug'] ?? '') ?>"
                class="flex gap-3 hover:bg-gray-50 rounded-xl p-2 transition-colors">
                <div class="w-14 h-14 rounded-lg bg-gray-100 overflow-hidden shrink-0">
                   <img src="<?= e($rb['featured_image'] ?? '') ?>" class="w-full h-full object-cover" loading="lazy">
@@ -522,7 +529,7 @@ async function submitBooking(e) {
   e.preventDefault();
   const user = await Session.init();
   if (!user) { 
-    window.location.href = '<?= FRONTEND_URL ?>/login.php?redirect=' + encodeURIComponent(window.location.href); 
+    window.location.href = '<?= FRONTEND_URL ?>/login?redirect=' + encodeURIComponent(window.location.href); 
     return; 
   }
 
@@ -577,7 +584,7 @@ async function submitBooking(e) {
                 
                 if (v?.success) {
                     Utils.toast('🎉 Payment successful! Booking confirmed.');
-                    setTimeout(() => window.location.href = '<?= FRONTEND_URL ?>/dashboard.php', 2000);
+                    setTimeout(() => window.location.href = '<?= FRONTEND_URL ?>/dashboard', 2000);
                 } else {
                     Utils.toast(v?.message || 'Payment verification failed', 'error');
                     btn.textContent = originalBtnText; btn.disabled = false;

@@ -10,7 +10,7 @@ if (!function_exists('formatPrice')) require_once __DIR__ . '/helpers.php';
 function renderTripCard(array $trip) {
     $slug       = e($trip['slug'] ?? '');
     $title      = e($trip['title'] ?? 'Trip');
-    $cover      = e($trip['cover_image'] ?? 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600');
+    $cover      = img_url($trip['cover_image'] ?? null, 'trip');
     $country    = e($trip['country_name'] ?? '');
     $duration   = (int)($trip['duration_days'] ?? 1);
     $type       = e($trip['trip_type'] ?? 'Tour');
@@ -20,7 +20,7 @@ function renderTripCard(array $trip) {
     $isSale     = $trip['discounted_price'] > 0;
     $isFeatured = !empty($trip['is_featured']);
 
-    $detailUrl  = FRONTEND_URL . '/trip.php/' . urlencode($trip['slug'] ?? '');
+    $detailUrl  = FRONTEND_URL . '/trip/' . urlencode($trip['slug'] ?? '');
     ?>
     <article class="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-300 group border border-gray-100 flex flex-col">
       <a href="<?= $detailUrl ?>" class="relative block overflow-hidden h-52 shrink-0">

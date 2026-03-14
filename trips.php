@@ -44,6 +44,7 @@ $paginationUrl = 'trips' . ($filterParams ? '?' . $filterParams : '');
 $pageTitle  = $q ? '"' . $q . '" — Trip Search Results' : 'Explore All Trip Packages';
 $pageDesc   = 'Browse ' . ($totalTrips > 0 ? $totalTrips . '+ ' : '') . 'curated travel packages. Filter by destination, budget, type, and duration. Book online instantly.';
 $activePage = 'trips';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';

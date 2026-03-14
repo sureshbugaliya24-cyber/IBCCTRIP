@@ -9,16 +9,15 @@ function renderCityCard(array $c): void {
     $name      = e($c['name'] ?? 'City');
     $slug      = e($c['slug'] ?? '');
     $stateName = e($c['state_name'] ?? '');
-    $img       = e($c['featured_image'] ?? 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600');
+    $img       = img_url($c['featured_image'] ?? null, 'city');
     $desc      = e($c['description'] ?? '');
-    $url       = FRONTEND_URL . '/city.php/' . urlencode($c['slug'] ?? '');
+    $url       = FRONTEND_URL . '/city/' . urlencode($c['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"
    class="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl
           transition-all duration-300 border border-gray-100">
   <div class="relative overflow-hidden h-40">
     <img src="<?= $img ?>" alt="<?= $name ?>" loading="lazy"
-         onerror="this.src='https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'"
          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
     <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
     <div class="absolute bottom-3 left-3">
@@ -39,16 +38,15 @@ function renderCityCard(array $c): void {
 function renderStateCard(array $s): void {
     $name        = e($s['name'] ?? 'State');
     $countryName = e($s['country_name'] ?? '');
-    $img         = e($s['featured_image'] ?? 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600');
+    $img         = img_url($s['featured_image'] ?? null, 'city');
     $desc        = e($s['description'] ?? '');
-    $url         = FRONTEND_URL . '/state.php/' . urlencode($s['slug'] ?? '');
+    $url         = FRONTEND_URL . '/state/' . urlencode($s['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"
    class="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl
           transition-all duration-300 border border-gray-100">
   <div class="relative overflow-hidden h-40">
     <img src="<?= $img ?>" alt="<?= $name ?>" loading="lazy"
-         onerror="this.src='https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'"
          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
     <div class="absolute bottom-3 left-3">
@@ -67,16 +65,15 @@ function renderStateCard(array $s): void {
 function renderPlaceCard(array $p): void {
     $name     = e($p['name'] ?? 'Place');
     $cityName = e($p['city_name'] ?? '');
-    $img      = e($p['featured_image'] ?? 'https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600');
+    $img      = img_url($p['featured_image'] ?? null, 'city');
     $desc     = e($p['description'] ?? '');
-    $url      = FRONTEND_URL . '/place.php/' . urlencode($p['slug'] ?? '');
+    $url      = FRONTEND_URL . '/place/' . urlencode($p['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"
    class="group block bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl
           transition-all duration-300 border border-gray-100">
   <div class="relative overflow-hidden h-40">
     <img src="<?= $img ?>" alt="<?= $name ?>" loading="lazy"
-         onerror="this.src='https://images.unsplash.com/photo-1488085061387-422e29b40080?w=600'"
          class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500">
     <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
     <div class="absolute bottom-3 left-3">

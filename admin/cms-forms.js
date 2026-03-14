@@ -99,31 +99,29 @@ window.renderTripForm = function(t={}) {
       ${fldWrap('State', `<select id="t-sid" onchange="filterCities(this.value)" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.states.filter(s => !t.country_id || s.country_id == t.country_id), t.state_id)}</select>`)}
       ${fldWrap('City', `<select id="t-cityid" onchange="filterPlaces(this.value)" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.cities.filter(c => !t.state_id || c.state_id == t.state_id), t.city_id)}</select>`)}
       ${fldWrap('Place', `<select id="t-plid" class="w-full border rounded-lg p-2 text-sm">${buildSel((globals.places || []).filter(p => !t.city_id || p.city_id == t.city_id), t.place_id)}</select>`)}
-    </div></div>
+    </div>
 
     ${sec('🖼️','Featured Images')}
     <div class="grid grid-cols-2 gap-5 py-2">
-      <div class="flex gap-4">
-        <div>${fldLabel('Cover Image')}${renderImagePicker('t-image', t.cover_image)}</div>
-        <div>${fldLabel('Route Map')}${renderImagePicker('t-mapimg', t.map_image)}</div>
-      </div>
-    </div></div>
+      <div>${fldLabel('Cover Image')}${renderImagePicker('t-image', t.cover_image)}</div>
+      <div>${fldLabel('Route Map')}${renderImagePicker('t-mapimg', t.map_image)}</div>
+    </div>
 
     ${sec('📝','Description')}
-    <div id="t-desc-editor" style="height:160px;background:white;border:1px solid #e5e7eb;border-radius:0.5rem;"></div></div>
+    <div id="t-desc-editor" style="height:160px;background:white;border:1px solid #e5e7eb;border-radius:0.5rem;"></div>
 
     ${sec('✅','Highlights, Inclusions & Exclusions')}
     <div class="grid grid-cols-3 gap-3">
       <div>${fldLabel('Highlights')}<div id="t-high" class="bg-gray-50 p-2 rounded-lg border min-h-[60px]"></div></div>
       <div>${fldLabel('Inclusions')}<div id="t-incl" class="bg-gray-50 p-2 rounded-lg border min-h-[60px]"></div></div>
       <div>${fldLabel('Exclusions')}<div id="t-excl" class="bg-gray-50 p-2 rounded-lg border min-h-[60px]"></div></div>
-    </div></div>
+    </div>
 
     ${sec('🗓️','Day-by-Day Itinerary')}
     <div class="flex justify-end mb-2"><button type="button" onclick="addItnDay()" class="text-xs bg-primary text-white px-3 py-1.5 rounded-lg font-bold">+ Add Day</button></div>
     <div id="t-itn" class="space-y-2">
       ${(t.itinerary||[]).map(renderItnDay).join('')}
-    </div></div>
+    </div>
 
     ${sec('📷','Gallery')}
     <div id="t-gallery-grid" class="flex flex-wrap gap-3 mb-2 py-2">
@@ -138,20 +136,20 @@ window.renderTripForm = function(t={}) {
           <span class="text-[9px] text-gray-400 font-bold uppercase group-hover:text-primary">Add</span>
       </button>
       <input type="file" id="t-gallery" multiple accept="image/*" class="hidden" onchange="uploadGalleryImg(this, ${id})">
-    </div></div>
+    </div>
 
     ${sec('🎥','Videos')}
     <div class="bg-blue-50/50 p-3 rounded-xl border border-blue-100">
         <p class="text-[10px] text-blue-600 font-bold uppercase mb-2">YouTube Video URLs (one per line)</p>
         <div id="t-vids" class="bg-white p-2 rounded-lg border min-h-[60px]"></div>
-    </div></div>
+    </div>
 
     ${sec('🔍','SEO / Meta')}
     <div class="grid grid-cols-1 gap-3">
       ${fldWrap('Meta Title',inp('t-mTitle',t.meta_title||'','text','Page title for Google'))}
       ${fldWrap('Meta Description',tx('t-mDesc',t.meta_description||'',2,'Brief summary for search results'))}
       ${fldWrap('Meta Keywords',inp('t-mKw',t.meta_keywords||'','text','keyword1, keyword2'))}
-    </div></div>
+    </div>
 
     <button type="submit" class="w-full bg-secondary text-white font-bold py-3 rounded-xl mt-3 relative z-50 shadow-lg hover:shadow-xl transition-all">${id?'Update Trip':'Create Trip'}</button>
     </form>`;
@@ -293,22 +291,22 @@ window.renderBlogForm = function(b={}) {
       ${fldWrap('Country',sel('b-cid',buildSel(globals.countries,b.country_id)))}
       ${fldWrap('State',sel('b-sid',buildSel(globals.states,b.state_id)))}
       ${fldWrap('City',sel('b-cityid',buildSel(globals.cities,b.city_id)))}
-    </div></div>
+    </div>
 
     ${sec('🖼️','Featured Image')}
-    <div>${renderImagePicker('b-image', b.featured_image)}</div></div>
+    <div>${renderImagePicker('b-image', b.featured_image)}</div>
 
     ${fldWrap('Excerpt',tx('b-exc',b.excerpt||'',2,'Short summary...'))}
 
     ${sec('📝','Content')}
-    <div id="b-content-editor" style="height:220px;background:white;border:1px solid #e5e7eb;border-radius:0.5rem;"></div></div>
+    <div id="b-content-editor" style="height:220px;background:white;border:1px solid #e5e7eb;border-radius:0.5rem;"></div>
 
     ${sec('🔍','SEO / Meta')}
     <div class="space-y-2">
       ${fldWrap('Meta Title',inp('b-mTitle',b.meta_title||'','text','Page title for Google'))}
       ${fldWrap('Meta Description',tx('b-mDesc',b.meta_description||'',2,'Brief summary for search results'))}
       ${fldWrap('Meta Keywords',inp('b-mKw',b.meta_keywords||'','text','keyword1, keyword2'))}
-    </div></div>
+    </div>
 
     <button type="submit" class="w-full bg-secondary text-white font-bold py-3 rounded-xl mt-3 relative z-50">${id?'Update Blog':'Create Blog'}</button>
     </form>`;

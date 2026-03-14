@@ -83,17 +83,19 @@ try {
                 ResponseHelper::error('Account is deactivated. Please contact support.', 403);
             }
 
-            $_SESSION['user_id']   = $user['id'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['user_name'] = $user['full_name'];
-            $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_id']   = $user['id'];
+                $_SESSION['user_role'] = $user['role'];
+                $_SESSION['user_name'] = $user['full_name'];
+                $_SESSION['user_email'] = $user['email'];
+                $_SESSION['user_phone'] = $user['phone'] ?? '';
 
-            ResponseHelper::success([
-                'user_id' => $user['id'],
-                'name'    => $user['full_name'],
-                'email'   => $user['email'],
-                'role'    => $user['role'],
-            ], 'Login successful');
+                ResponseHelper::success([
+                    'user_id' => $user['id'],
+                    'name'    => $user['full_name'],
+                    'email'   => $user['email'],
+                    'phone'   => $user['phone'] ?? '',
+                    'role'    => $user['role'],
+                ], 'Login successful');
             break;
 
         // GET ?action=logout
@@ -114,14 +116,15 @@ try {
             }
 
             if (!empty($_SESSION['user_id'])) {
-                ResponseHelper::success([
-                    'logged_in' => true,
-                    'user_id'   => $_SESSION['user_id'],
-                    'name'      => $_SESSION['user_name'],
-                    'email'     => $_SESSION['user_email'] ?? '',
-                    'role'      => $_SESSION['user_role'],
-                    'active_payments' => $active_payments
-                ]);
+                    ResponseHelper::success([
+                        'logged_in' => true,
+                        'user_id'   => $_SESSION['user_id'],
+                        'name'      => $_SESSION['user_name'],
+                        'email'     => $_SESSION['user_email'] ?? '',
+                        'phone'     => $_SESSION['user_phone'] ?? '',
+                        'role'      => $_SESSION['user_role'],
+                        'active_payments' => $active_payments
+                    ]);
             } else {
                 ResponseHelper::success([
                     'logged_in' => false,
@@ -135,7 +138,8 @@ try {
             if (empty($_SESSION['user_id'])) ResponseHelper::error('Authentication required', 401);
             if ($method !== 'POST' && $method !== 'PUT') ResponseHelper::error('Method not allowed', 405);
 
-            $name  = $clean($input['full_name'] ?? '');
+            // Support both 'name' and 'full_name' from frontend
+            $name  = $clean($input['full_name'] ?? $input['name'] ?? '');
             $phone = $clean($input['phone'] ?? '');
 
             if (!$name) ResponseHelper::error('Full name is required');
@@ -152,7 +156,8 @@ try {
             $data['__id'] = $_SESSION['user_id'];
             $stmt->execute($data);
 
-            $_SESSION['user_name'] = $name;
+            $_SESSION['user_name']  = $name;
+            $_SESSION['user_phone'] = $phone;
 
             ResponseHelper::success(['name' => $name], 'Profile updated');
             break;

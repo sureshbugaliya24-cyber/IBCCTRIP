@@ -40,3 +40,13 @@ if (!defined('API_URL'))      define('API_URL',      BASE_URL . '/backend/api');
 
 // Session
 if (!defined('FE_SESSION_NAME')) define('FE_SESSION_NAME', 'ibcctrip_sess');
+
+// Global Settings Sync
+try {
+    $stmtSettings = $pdo->query("SELECT s_key, s_value FROM site_settings");
+    $settingsData = $stmtSettings->fetchAll(PDO::FETCH_KEY_PAIR);
+    foreach ($settingsData as $s_key => $s_val) {
+        $constName = strtoupper($s_key);
+        if (!defined($constName)) define($constName, $s_val);
+    }
+} catch (Exception $e) {}

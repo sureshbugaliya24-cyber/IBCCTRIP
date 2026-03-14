@@ -28,6 +28,7 @@ $paginationUrl = 'blog' . ($filterParams ? '?' . $filterParams : '');
 $pageTitle  = $category ? ucfirst($category) . ' — Travel Blog' : 'Travel Blog';
 $pageDesc   = 'Expert travel tips, destination guides, and inspiring stories. Regularly updated by the IBCC Trip team.';
 $activePage = 'blog';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';

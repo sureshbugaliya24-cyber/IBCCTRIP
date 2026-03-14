@@ -135,3 +135,23 @@ function qParam(string $key, mixed $default = ''): string {
 function activeClass(string $page, string $current): string {
     return $page === $current ? 'text-secondary' : 'hover:text-secondary transition-colors';
 }
+/**
+ * Get image URL with dynamic placeholder fallbacks
+ */
+function img_url(?string $url, string $type = 'general'): string {
+    if ($url && !empty($url)) {
+        // If it's a full URL or relative to project root
+        if (strpos($url, 'http') === 0) return $url;
+        return BASE_URL . '/uploads/' . ltrim($url, '/');
+    }
+
+    // Fallbacks from site settings
+    $placeholders = [
+        'trip'        => defined('PLACEHOLDER_TRIP_COVER_IMAGE') ? PLACEHOLDER_TRIP_COVER_IMAGE : (defined('PLACEHOLDER_TRIP') ? PLACEHOLDER_TRIP : 'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800'),
+        'blog'        => defined('PLACEHOLDER_BLOG_IMAGE') ? PLACEHOLDER_BLOG_IMAGE : (defined('PLACEHOLDER_BLOG') ? PLACEHOLDER_BLOG : 'https://images.unsplash.com/photo-1499750310107-5fef28a66643?w=800'),
+        'destination' => defined('PLACEHOLDER_DESTINATION_IMAGE') ? PLACEHOLDER_DESTINATION_IMAGE : (defined('PLACEHOLDER_CITY') ? PLACEHOLDER_CITY : 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=800'),
+        'general'     => defined('PLACEHOLDER_GENERAL') ? PLACEHOLDER_GENERAL : 'https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800',
+    ];
+
+    return $placeholders[$type] ?? $placeholders['general'];
+}

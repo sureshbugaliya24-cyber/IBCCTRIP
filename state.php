@@ -18,6 +18,7 @@ if (!$slug) {
     $states = apiGet('locations.php', ['action' => 'states']);
     $pageTitle = 'Explore States & Regions';
     $activePage = 'destinations';
+    $transparent = true;
     require_once __DIR__ . '/layouts/head.php';
     require_once __DIR__ . '/layouts/header.php';
     ?>
@@ -38,7 +39,7 @@ if (!$slug) {
 
 // Single State Detail
 $resp = apiGetFull('locations.php', ['action' => 'state', 'slug' => $slug]);
-if (empty($resp['success'])) redirect(FRONTEND_URL . '/state.php');
+if (empty($resp['success'])) redirect(FRONTEND_URL . '/state');
 
 $state = $resp['data'] ?? [];
 $cities = $state['cities'] ?? [];
@@ -46,6 +47,7 @@ $trips  = $state['trips']  ?? [];
 
 $pageTitle = $state['name'] ?? 'State';
 $activePage = 'destinations';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -56,9 +58,9 @@ require_once __DIR__ . '/layouts/header.php';
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
   <div class="absolute inset-0 flex flex-col justify-end pb-12 px-4 max-w-7xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
-      ['Home', FRONTEND_URL . '/index.php'],
-      ['Destinations', FRONTEND_URL . '/country.php'],
-      [$state['country_name'] ?? 'Destinations', FRONTEND_URL . '/country.php/' . ($state['country_slug'] ?? '')],
+      ['Home', FRONTEND_URL . '/'],
+      ['Destinations', FRONTEND_URL . '/country'],
+      [$state['country_name'] ?? 'Destinations', FRONTEND_URL . '/country/' . ($state['country_slug'] ?? '')],
       [$state['name'] ?? ''],
     ]); ?>
     <h1 class="text-4xl md:text-6xl font-black text-white mt-4"><?= e($state['name'] ?? '') ?></h1>
@@ -102,7 +104,7 @@ require_once __DIR__ . '/layouts/header.php';
           <li class="flex justify-between border-b pb-2"><span class="text-gray-400">Available Cities</span><span class="font-bold"><?= count($cities) ?></span></li>
           <li class="flex justify-between border-b pb-2"><span class="text-gray-400">Total Trips</span><span class="font-bold"><?= count($trips) ?></span></li>
         </ul>
-        <a href="<?= FRONTEND_URL ?>/contact.php" class="mt-8 block bg-secondary text-white text-center font-extrabold py-3.5 rounded-xl">Get Custom Quote</a>
+        <a href="<?= FRONTEND_URL ?>/contact" class="mt-8 block bg-secondary text-white text-center font-extrabold py-3.5 rounded-xl">Get Custom Quote</a>
       </div>
     </aside>
   </div>

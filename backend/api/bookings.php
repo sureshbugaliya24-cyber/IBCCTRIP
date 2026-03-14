@@ -141,7 +141,6 @@ try {
             try {
                 $pdo->beginTransaction();
 
-                // 1. Insert booking
                 $bStmt = $pdo->prepare(
                     "INSERT INTO bookings (booking_ref, user_id, trip_id, start_date, end_date, duration_days, num_members,
                                            full_name, email, phone, special_notes, status, total_price, currency_code, base_price, trip_details)
@@ -308,11 +307,11 @@ try {
 
             // Company info
             $booking['company'] = [
-                'name'    => 'IBCC Trip',
-                'address' => '123, Travel Hub, Connaught Place, New Delhi - 110001',
-                'phone'   => '+91 98765 43210',
-                'email'   => 'info@ibcctrip.com',
-                'gst'     => 'GST07AAADI1234A1Z5',
+                'name'    => defined('COMPANY_NAME') ? COMPANY_NAME : 'IBCC Trip',
+                'address' => defined('CONTACT_ADDRESS') ? CONTACT_ADDRESS : '123, Travel Hub, Connaught Place, New Delhi - 110001',
+                'phone'   => defined('CONTACT_PHONE') ? CONTACT_PHONE : '+91 98765 43210',
+                'email'   => defined('CONTACT_EMAIL') ? CONTACT_EMAIL : 'info@ibcctrip.com',
+                'gst'     => defined('COMPANY_GST') ? COMPANY_GST : 'GST07AAADI1234A1Z5',
             ];
 
             ResponseHelper::success($booking);

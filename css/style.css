@@ -1,7 +1,7 @@
 /* Global Design System variables initialized in head.php */
 
 :root {
-    --primary: #0B3D91;
+    --primary: #1E1B7A;
     --secondary: #FF6B00;
 }
 
@@ -64,4 +64,21 @@ select:-webkit-autofill:focus {
 .btn-secondary:hover {
     filter: brightness(1.1);
     transform: translateY(-1px);
+}
+
+/* Logo SVG Styling */
+.logo-icon {
+    background-color: var(--primary);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem; /* rounded-xl */
+    padding: 0.5rem;
+}
+.logo-icon svg {
+    width: 100%;
+    height: 100%;
+    stroke: currentColor;
+    fill: none;
 }

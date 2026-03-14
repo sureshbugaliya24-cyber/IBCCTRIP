@@ -9,8 +9,8 @@ function renderLogo($type = 'full', $classes = '') {
     $svg   = defined('SITE_ICON_SVG')   ? SITE_ICON_SVG   : '';
 
     $iconHtml = '
-    <div class="logo-icon w-9 h-9 rounded-xl bg-secondary flex items-center justify-center shadow-lg ' . $classes . '">
-        <div class="w-5 h-5 text-white flex items-center justify-center">
+    <div class="logo-icon w-9 h-9 rounded-xl bg-primary flex items-center justify-center shadow-lg ' . $classes . '">
+        <div class="w-5 h-5 text-white flex items-center justify-center [&_svg]:fill-white [&_svg]:stroke-white">
             ' . $svg . '
         </div>
     </div>';

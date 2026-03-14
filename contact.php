@@ -5,9 +5,24 @@
 require_once __DIR__ . '/components/config.php';
 require_once __DIR__ . '/components/helpers.php';
 
+if (defined('SESSION_NAME')) {
+    session_name(SESSION_NAME);
+}
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+$userData = null;
+if (isset($_SESSION['user_id'])) {
+    $stmt = $pdo->prepare("SELECT full_name, email, phone FROM users WHERE id = ?");
+    $stmt->execute([$_SESSION['user_id']]);
+    $userData = $stmt->fetch();
+}
+
 $pageTitle = 'Contact Us';
 $pageDesc  = 'Get in touch with IBCC Trip for customized travel quotes and support.';
 $activePage = 'contact';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -55,11 +70,13 @@ require_once __DIR__ . '/layouts/header.php';
             <div>
               <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Full Name</label>
               <input type="text" id="c-name" required placeholder="John Doe"
+                     value="<?= e($userData['full_name'] ?? '') ?>"
                      class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-sm focus:outline-none focus:border-primary transition-all">
             </div>
             <div>
               <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Email Address</label>
               <input type="email" id="c-email" required placeholder="john@example.com"
+                     value="<?= e($userData['email'] ?? '') ?>"
                      class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-sm focus:outline-none focus:border-primary transition-all">
             </div>
           </div>
@@ -68,6 +85,7 @@ require_once __DIR__ . '/layouts/header.php';
             <div>
               <label class="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">Phone Number</label>
               <input type="tel" id="c-phone" required placeholder="98765 43210"
+                     value="<?= e($userData['phone'] ?? '') ?>"
                      class="w-full bg-gray-50 border border-gray-100 rounded-2xl py-4 px-5 text-sm focus:outline-none focus:border-primary transition-all">
             </div>
             <div>
@@ -105,8 +123,8 @@ require_once __DIR__ . '/layouts/header.php';
 
 <!-- Map -->
 <section class="h-[400px] w-full bg-gray-200">
-  <iframe 
-    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d14008.114827184161!2d77.2167210!3d28.6129120!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x390cfd5d34766085%3A0xa39d39ea1472871c!2sConnaught%20Place%2C%20New%20Delhi!5e0!3m2!1sen!2sin!4v1625484832483!5m2!1sen!2sin" 
+    <iframe 
+    src="https://www.google.com/maps?q=<?= urlencode(CONTACT_ADDRESS) ?>&output=embed" 
     width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
 </section>
 

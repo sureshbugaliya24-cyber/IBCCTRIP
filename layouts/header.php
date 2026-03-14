@@ -12,13 +12,13 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
 $activePage  = $activePage  ?? '';
 $transparent = $transparent ?? false;
 
-$navDef  = $transparent ? 'bg-transparent' : 'bg-primary shadow-lg';
-$textClr = 'text-white';
+$navDef  = $transparent ? 'bg-transparent' : 'bg-white shadow-md border-b border-gray-100';
+$textClr = $transparent ? 'text-white' : 'text-gray-900';
 
 function navCls(string $page, string $active): string {
-    return $page === $active
-        ? 'text-secondary font-semibold'
-        : 'text-white/90 hover:text-secondary transition-colors font-medium';
+    $isTrans = $GLOBALS['transparent'] ?? false;
+    if ($page === $active) return 'nav-link-item active text-secondary font-bold';
+    return 'nav-link-item ' . ($isTrans ? 'text-white/90' : 'text-gray-600') . ' hover:text-secondary transition-colors font-medium';
 }
 ?>
 
@@ -28,7 +28,7 @@ function navCls(string $page, string $active): string {
      data-transparent="<?= $transparent ? '1' : '0' ?>">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 md:h-20">
 
-    <a href="<?= FRONTEND_URL ?>/" class="shrink-0">
+    <a href="<?= FRONTEND_URL ?>/" class="shrink-0 flex items-center">
       <?= renderLogo() ?>
     </a>
 
@@ -61,6 +61,9 @@ function navCls(string $page, string $active): string {
           <a href="<?= FRONTEND_URL ?>/place"   class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50 hover:text-primary text-sm transition-colors">
             📍 Places
           </a>
+          <a href="<?= FRONTEND_URL ?>/gallery" class="flex items-center gap-2 px-3 py-2.5 rounded-xl text-gray-700 hover:bg-blue-50 hover:text-primary text-sm transition-colors border-t border-gray-50 mt-1">
+            📸 Photo Gallery
+          </a>
         </div>
       </li>
 
@@ -69,17 +72,16 @@ function navCls(string $page, string $active): string {
       <li><a href="<?= FRONTEND_URL ?>/contact" class="<?= navCls('contact', $activePage) ?>">Contact</a></li>
     </ul>
 
-    <!-- Right-side Auth Buttons -->
     <div class="hidden md:flex items-center gap-3">
       <!-- Shown when NOT logged in (JS toggles visibility) -->
       <a id="nav-login" href="<?= FRONTEND_URL ?>/login" style="display:none"
-         class="text-white text-sm font-semibold hover:text-secondary transition-colors">
+         class="auth-link <?= $transparent ? 'text-white' : 'text-gray-900' ?> text-sm font-semibold hover:text-secondary transition-colors">
         Login
       </a>
 
       <!-- Shown when logged in -->
       <a id="nav-dashboard" href="<?= FRONTEND_URL ?>/dashboard" style="display:none"
-         class="flex items-center gap-2 text-white text-sm font-semibold">
+         class="auth-link flex items-center gap-2 <?= $transparent ? 'text-white' : 'text-gray-900' ?> text-sm font-semibold">
         <span class="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center text-xs font-extrabold"
               id="nav-avatar">U</span>
         <span id="nav-user-name" class="hidden lg:inline"></span>
@@ -94,7 +96,7 @@ function navCls(string $page, string $active): string {
 
     <!-- Mobile Menu Toggle -->
     <button id="mobile-toggle"
-            class="md:hidden text-white p-2 rounded-lg hover:bg-white/10 transition-colors"
+            class="md:hidden <?= $transparent ? 'text-white' : 'text-gray-900' ?> p-2 rounded-lg hover:bg-gray-100 transition-colors"
             onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
       <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -103,35 +105,37 @@ function navCls(string $page, string $active): string {
   </div>
 
   <!-- Mobile Menu -->
-  <div id="mobile-menu" class="hidden md:hidden bg-primary border-t border-white/10 px-4 pb-4">
-    <a href="<?= FRONTEND_URL ?>/"   class="block text-white py-2.5 border-b border-white/10 text-sm">🏠 Home</a>
-    <a href="<?= FRONTEND_URL ?>/trips"   class="block text-white py-2.5 border-b border-white/10 text-sm">✈️ Trips</a>
-    <a href="<?= FRONTEND_URL ?>/country" class="block text-white py-2.5 border-b border-white/10 text-sm">🌍 Countries</a>
-    <a href="<?= FRONTEND_URL ?>/state"   class="block text-white py-2.5 border-b border-white/10 text-sm">🗺 States</a>
-    <a href="<?= FRONTEND_URL ?>/city"    class="block text-white py-2.5 border-b border-white/10 text-sm">🏙 Cities</a>
-    <a href="<?= FRONTEND_URL ?>/blog"    class="block text-white py-2.5 border-b border-white/10 text-sm">📝 Blog</a>
-    <a href="<?= FRONTEND_URL ?>/about"   class="block text-white py-2.5 border-b border-white/10 text-sm">🏢 About</a>
-    <a href="<?= FRONTEND_URL ?>/contact" class="block text-white py-2.5 border-b border-white/10 text-sm">📞 Contact</a>
-    <a id="mobile-login" href="<?= FRONTEND_URL ?>/login" style="display:none" class="block mt-3 bg-secondary text-white text-center py-3 rounded-xl font-extrabold text-sm">
-      Login / Register
-    </a>
-    <div id="mobile-user" class="hidden mt-3 pt-3 border-t border-white/10">
-      <div class="flex items-center gap-3 mb-4">
-        <div id="mobile-avatar" class="w-10 h-10 rounded-full bg-secondary text-white flex items-center justify-center font-extrabold">U</div>
-        <div class="text-white">
-          <p id="mobile-user-name" class="font-bold text-sm"></p>
-          <p class="text-xs text-white/60">Verified Explorer</p>
+  <div id="mobile-menu" class="hidden md:hidden bg-white/95 backdrop-blur-md border-b border-gray-100 shadow-xl overflow-hidden animate-fadeIn">
+    <div class="p-4 flex flex-col gap-1">
+      <a href="<?= FRONTEND_URL ?>/"   class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition-all">🏠 Home</a>
+      <a href="<?= FRONTEND_URL ?>/trips"   class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition-all">✈️ Trips</a>
+      <a href="<?= FRONTEND_URL ?>/gallery" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition-all">📸 Gallery</a>
+      <a href="<?= FRONTEND_URL ?>/blog"    class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition-all">📝 Blog</a>
+      <a href="<?= FRONTEND_URL ?>/about"   class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition-all">🏢 About</a>
+      <a href="<?= FRONTEND_URL ?>/contact" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-gray-50 text-gray-700 font-bold transition-all">📞 Contact</a>
+      
+      <div id="mobile-auth-section" class="mt-4 pt-4 border-t border-gray-100">
+        <a id="mobile-login" href="<?= FRONTEND_URL ?>/login" style="display:none" 
+           class="block w-full bg-secondary text-white text-center py-3.5 rounded-xl font-extrabold shadow-lg shadow-secondary/20 hover:scale-[1.02] active:scale-95 transition-all">
+          Login / Register
+        </a>
+        <div id="mobile-user" class="hidden">
+          <div class="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl mb-4">
+            <div id="mobile-avatar" class="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center font-black text-xl shadow-md border-2 border-white">U</div>
+            <div>
+              <p id="mobile-user-name" class="font-extrabold text-gray-900 leading-tight"></p>
+              <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Verified Explorer</p>
+            </div>
+          </div>
+          <a id="mobile-dashboard-btn" href="<?= FRONTEND_URL ?>/dashboard" 
+             class="flex items-center justify-center gap-2 w-full bg-primary text-white py-3.5 rounded-xl font-extrabold shadow-lg shadow-primary/20 hover:bg-blue-800 transition-all">
+            🏠 Dashboard
+          </a>
         </div>
       </div>
-      <a id="mobile-dashboard-btn" href="<?= FRONTEND_URL ?>/dashboard" class="block text-white py-2 text-sm font-semibold">🏠 Dashboard</a>
     </div>
   </div>
 </nav>
-
-<!-- Spacer for non-transparent header (hero pages handle this themselves) -->
-<?php if (!$transparent): ?>
-<div class="h-16 md:h-20"></div>
-<?php endif; ?>
 
 <script src="<?= FRONTEND_URL ?>/js/app.js?v=<?= APP_VERSION ?>"></script>
 <script>
@@ -178,19 +182,38 @@ function navCls(string $page, string $active): string {
 
   // Scroll Handler
   function handleScroll() {
-    if (!isTrans) return;
-    if (window.scrollY > 80) {
-      nav.classList.remove('bg-transparent');
-      nav.classList.add('bg-primary', 'shadow-lg');
+    if (window.scrollY > 50) {
+      nav.classList.add('scrolled', 'shadow-xl');
+      if (isTrans) {
+          nav.classList.remove('bg-transparent');
+          nav.classList.add('bg-white');
+      }
     } else {
-      nav.classList.add('bg-transparent');
-      nav.classList.remove('bg-primary', 'shadow-lg');
+      nav.classList.remove('scrolled', 'shadow-xl');
+      if (isTrans) {
+          nav.classList.add('bg-transparent');
+          nav.classList.remove('bg-white');
+      }
     }
   }
 
   syncAuth();
-  if (isTrans) {
-    window.addEventListener('scroll', handleScroll, { passive: true });
-  }
+  window.addEventListener('scroll', handleScroll, { passive: true });
+  handleScroll(); // Initial check
 }());
 </script>
+
+<style>
+  #main-navbar.scrolled { background-color: white !important; height: 70px !important; }
+  #main-navbar.scrolled .logo-text { color: #111827 !important; }
+  #main-navbar.scrolled .nav-link-item { color: #4B5563 !important; }
+  #main-navbar.scrolled .nav-link-item:hover,
+  #main-navbar.scrolled .nav-link-item.active { color: <?= COLOR_SECONDARY ?> !important; }
+  #main-navbar.scrolled .auth-link { color: #111827 !important; }
+  #main-navbar.scrolled .auth-link:hover { color: <?= COLOR_SECONDARY ?> !important; }
+  
+  /* Ensure logo icon is visible if header is primary */
+  #main-navbar.bg-primary .logo-icon { background-color: white !important; }
+  #main-navbar.bg-primary .logo-icon svg { fill: <?= COLOR_PRIMARY ?> !important; stroke: <?= COLOR_PRIMARY ?> !important; }
+  #main-navbar.bg-primary .logo-text { color: white !important; }
+</style>

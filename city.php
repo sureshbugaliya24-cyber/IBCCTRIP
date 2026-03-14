@@ -17,6 +17,7 @@ if (!$slug) {
     $cities = apiGet('locations.php', ['action' => 'cities']);
     $pageTitle = 'Explore Cities';
     $activePage = 'destinations';
+    $transparent = true;
     require_once __DIR__ . '/layouts/head.php';
     require_once __DIR__ . '/layouts/header.php';
     ?>
@@ -36,7 +37,7 @@ if (!$slug) {
 }
 
 $resp = apiGetFull('locations.php', ['action' => 'city', 'slug' => $slug]);
-if (empty($resp['success'])) redirect(FRONTEND_URL . '/city.php');
+if (empty($resp['success'])) redirect(FRONTEND_URL . '/city');
 
 $city   = $resp['data'] ?? [];
 $places = $city['places'] ?? [];
@@ -44,6 +45,7 @@ $trips  = $city['trips']  ?? [];
 
 $pageTitle = $city['name'] ?? 'City';
 $activePage = 'destinations';
+$transparent = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -54,10 +56,10 @@ require_once __DIR__ . '/layouts/header.php';
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
   <div class="absolute inset-0 flex flex-col justify-end pb-12 px-4 max-w-7xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
-      ['Home', FRONTEND_URL . '/index.php'],
-      ['Destinations', FRONTEND_URL . '/country.php'],
-      [$city['country_name'] ?? 'Country', FRONTEND_URL . '/country.php/' . ($city['country_slug'] ?? '')],
-      [$city['state_name'] ?? 'State', FRONTEND_URL . '/state.php/' . ($city['state_slug'] ?? '')],
+      ['Home', FRONTEND_URL . '/'],
+      ['Destinations', FRONTEND_URL . '/country'],
+      [$city['country_name'] ?? 'Country', FRONTEND_URL . '/country/' . ($city['country_slug'] ?? '')],
+      [$city['state_name'] ?? 'State', FRONTEND_URL . '/state/' . ($city['state_slug'] ?? '')],
       [$city['name'] ?? ''],
     ]); ?>
     <h1 class="text-4xl md:text-6xl font-black text-white mt-4"><?= e($city['name'] ?? '') ?></h1>
@@ -98,14 +100,14 @@ require_once __DIR__ . '/layouts/header.php';
         <h3 class="font-extrabold text-gray-900 text-lg mb-6">Explore More</h3>
         <div class="space-y-4">
           <?php if (!empty($city['country_slug'])): ?>
-          <a href="<?= FRONTEND_URL ?>/country.php/<?= e($city['country_slug']) ?>" 
+          <a href="<?= FRONTEND_URL ?>/country/<?= e($city['country_slug']) ?>" 
              class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-primary hover:text-white transition-all group">
             <span class="font-bold text-sm">More in <?= e($city['country_name'] ?? 'Country') ?></span>
             <span class="group-hover:translate-x-1 transition-transform">→</span>
           </a>
           <?php endif; ?>
           <?php if (!empty($city['state_slug'])): ?>
-          <a href="<?= FRONTEND_URL ?>/state.php/<?= e($city['state_slug']) ?>" 
+          <a href="<?= FRONTEND_URL ?>/state/<?= e($city['state_slug']) ?>" 
              class="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-primary hover:text-white transition-all group">
             <span class="font-bold text-sm">More in <?= e($city['state_name'] ?? 'State') ?></span>
             <span class="group-hover:translate-x-1 transition-transform">→</span>
@@ -124,7 +126,7 @@ require_once __DIR__ . '/layouts/header.php';
         <h2 class="text-3xl font-black text-gray-900">Discover More <span class="text-primary">Trips</span></h2>
         <p class="text-gray-400 mt-2">More adventures from the same region</p>
       </div>
-      <a href="<?= FRONTEND_URL ?>/trips.php" class="text-primary font-bold hover:underline">View All →</a>
+      <a href="<?= FRONTEND_URL ?>/trips" class="text-primary font-bold hover:underline">View All →</a>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
       <?php foreach ($city['related_trips'] as $rt): renderTripCard($rt); endforeach; ?>
