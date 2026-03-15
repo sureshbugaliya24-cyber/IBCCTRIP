@@ -74,6 +74,16 @@ try {
             $countStmt->execute($params);
             $total = (int) $countStmt->fetchColumn();
 
+            $orderBy = 't.sort_order ASC, t.id DESC';
+            if (isset($_GET['sort'])) {
+                switch ($_GET['sort']) {
+                    case 'price_asc':  $orderBy = 't.discounted_price ASC, t.id DESC'; break;
+                    case 'price_desc': $orderBy = 't.discounted_price DESC, t.id DESC'; break;
+                    case 'duration':   $orderBy = 't.duration_days ASC, t.id DESC'; break;
+                    case 'newest':     $orderBy = 't.id DESC'; break;
+                }
+            }
+
             $dataParams = array_merge($params, [$limit, $offset]);
             $stmt = $pdo->prepare(
                 "SELECT t.id, t.title, t.slug, t.description, t.base_price, t.discounted_price,
@@ -86,7 +96,7 @@ try {
                  LEFT JOIN states s    ON t.state_id = s.id
                  LEFT JOIN cities ci   ON t.city_id = ci.id
                  WHERE $whereStr
-                 ORDER BY t.sort_order ASC, t.id DESC
+                 ORDER BY $orderBy
                  LIMIT ? OFFSET ?"
             );
             $stmt->execute($dataParams);

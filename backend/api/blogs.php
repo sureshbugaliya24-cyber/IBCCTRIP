@@ -22,7 +22,13 @@ try {
         case 'list':
             $where  = ["b.status = 'Published'"];
             $params = [];
+            $joins  = [];
 
+            if (!empty($_GET['category'])) {
+                $joins[] = 'LEFT JOIN blog_categories bc2 ON b.category_id = bc2.id';
+                $where[] = 'bc2.slug = ?'; 
+                $params[] = $_GET['category'];
+            }
             if (!empty($_GET['category_id'])) {
                 $where[] = 'b.category_id = ?'; $params[] = (int)$_GET['category_id'];
             }
@@ -34,9 +40,11 @@ try {
                 $params[] = '%'.$_GET['q'].'%';
                 $params[] = '%'.$_GET['q'].'%';
             }
+            
             $w = implode(' AND ', $where);
+            $j = implode(' ', $joins);
 
-            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM blogs b WHERE $w");
+            $countStmt = $pdo->prepare("SELECT COUNT(*) FROM blogs b $j WHERE $w");
             $countStmt->execute($params);
             $total = (int) $countStmt->fetchColumn();
 
@@ -47,6 +55,7 @@ try {
                  FROM blogs b
                  LEFT JOIN blog_categories bc ON b.category_id = bc.id
                  LEFT JOIN countries c         ON b.country_id = c.id
+                 $j
                  WHERE $w
                  ORDER BY b.created_at DESC
                  LIMIT ? OFFSET ?"
@@ -86,7 +95,12 @@ try {
             break;
 
         case 'categories':
-            $stmt = $pdo->query("SELECT * FROM blog_categories ORDER BY sort_order, name");
+            $stmt = $pdo->query(
+                "SELECT c.*, 
+                        (SELECT COUNT(*) FROM blogs b WHERE b.category_id = c.id AND b.status = 'Published') AS post_count 
+                 FROM blog_categories c 
+                 ORDER BY c.sort_order, c.name"
+            );
             ResponseHelper::success($stmt->fetchAll());
             break;
 

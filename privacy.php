@@ -15,7 +15,7 @@ require_once __DIR__ . '/layouts/header.php';
         <?php renderBreadcrumb([
             ['Home', FRONTEND_URL . '/'],
             ['Privacy Policy', '']
-        ]); ?>
+        ], 'light'); ?>
         
         <div class="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 p-8 md:p-12 mt-8">
             <h1 class="text-4xl font-extrabold text-gray-900 mb-8 uppercase tracking-tight">Privacy Policy</h1>

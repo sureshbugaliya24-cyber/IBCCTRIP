@@ -12,7 +12,7 @@ class Router
         // Admin Routes
         if ($page == 'admin') {
             $adminPage = $segments[1] ?? 'dashboard';
-            $file = __DIR__ . "/../admin/{$adminPage}.php";
+            $file = __DIR__ . "/../adminn/{$adminPage}.php";
             if (file_exists($file)) {
                 require $file;
             }

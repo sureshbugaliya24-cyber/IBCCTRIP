@@ -12,8 +12,7 @@ if (!defined('FRONTEND_URL')) require_once __DIR__ . '/../components/config.php'
 $activePage  = $activePage  ?? '';
 $transparent = $transparent ?? false;
 
-$navDef  = $transparent ? 'bg-transparent' : 'bg-white shadow-md border-b border-gray-100';
-$textClr = $transparent ? 'text-white' : 'text-gray-900';
+$navDef  = $transparent ? 'bg-transparent text-white' : 'bg-white shadow-md border-b border-gray-100 text-gray-900';
 
 function navCls(string $page, string $active): string {
     $isTrans = $GLOBALS['transparent'] ?? false;
@@ -24,7 +23,7 @@ function navCls(string $page, string $active): string {
 
 <!-- ====== NAVBAR ====== -->
 <nav id="main-navbar"
-     class="fixed top-0 left-0 right-0 z-[999] transition-all duration-300 <?= $navDef ?>"
+     class="<?= $transparent ? 'fixed' : 'sticky' ?> top-0 left-0 right-0 z-[999] transition-all duration-300 <?= $navDef ?>"
      data-transparent="<?= $transparent ? '1' : '0' ?>">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16 md:h-20">
 
@@ -96,8 +95,8 @@ function navCls(string $page, string $active): string {
 
     <!-- Mobile Menu Toggle -->
     <button id="mobile-toggle"
-            class="md:hidden <?= $transparent ? 'text-white' : 'text-gray-900' ?> p-2 rounded-lg hover:bg-gray-100 transition-colors"
-            onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+            class="md:hidden p-2 rounded-lg hover:bg-gray-100/20 transition-colors <?= $transparent ? 'text-white' : 'text-gray-900' ?>"
+            onclick="toggleMobileMenu()">
       <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
       </svg>
@@ -182,35 +181,83 @@ function navCls(string $page, string $active): string {
 
   // Scroll Handler
   function handleScroll() {
+    if (!isTrans) return; // Solid headers don't change on scroll
+    
+    // Don't revert to transparent if mobile menu is open
+    const isMenuOpen = !document.getElementById('mobile-menu').classList.contains('hidden');
+    if (isMenuOpen) return;
+    
+    const mToggle = document.getElementById('mobile-toggle');
+
     if (window.scrollY > 50) {
-      nav.classList.add('scrolled', 'shadow-xl');
-      if (isTrans) {
-          nav.classList.remove('bg-transparent');
-          nav.classList.add('bg-white');
+      nav.classList.add('scrolled', 'shadow-xl', 'bg-white');
+      nav.classList.remove('bg-transparent', 'text-white');
+      if (mToggle) {
+          mToggle.classList.remove('text-white');
+          mToggle.classList.add('text-gray-900');
       }
     } else {
-      nav.classList.remove('scrolled', 'shadow-xl');
-      if (isTrans) {
-          nav.classList.add('bg-transparent');
-          nav.classList.remove('bg-white');
+      nav.classList.remove('scrolled', 'shadow-xl', 'bg-white');
+      nav.classList.add('bg-transparent', 'text-white');
+      if (mToggle) {
+          mToggle.classList.add('text-white');
+          mToggle.classList.remove('text-gray-900');
       }
     }
   }
 
+  // Exposed to global scope so onclick works
+  window.toggleMobileMenu = function() {
+      const menu = document.getElementById('mobile-menu');
+      const mToggle = document.getElementById('mobile-toggle');
+      const isHidden = menu.classList.contains('hidden');
+      
+      if (isHidden) {
+          // Opening menu
+          menu.classList.remove('hidden');
+          // Force header to solid white for contrast
+          nav.classList.add('bg-white', 'text-gray-900');
+          nav.classList.remove('bg-transparent', 'text-white');
+          if (mToggle) {
+              mToggle.classList.remove('text-white');
+              mToggle.classList.add('text-gray-900');
+          }
+      } else {
+          // Closing menu
+          menu.classList.add('hidden');
+          // Re-evaluate scroll position if transparent
+          if (isTrans) handleScroll();
+      }
+  };
+
   syncAuth();
-  window.addEventListener('scroll', handleScroll, { passive: true });
-  handleScroll(); // Initial check
+  if (isTrans) {
+      window.addEventListener('scroll', handleScroll, { passive: true });
+      handleScroll(); // Initial check
+  }
 }());
 </script>
 
 <style>
   #main-navbar.scrolled { background-color: white !important; height: 70px !important; }
-  #main-navbar.scrolled .logo-text { color: #111827 !important; }
-  #main-navbar.scrolled .nav-link-item { color: #4B5563 !important; }
+  
+  /* Text Color Overrides for Scrolled or Solid Headers */
+  #main-navbar.scrolled .logo-text,
+  #main-navbar:not([data-transparent="1"]) .logo-text { color: #111827 !important; }
+  
+  #main-navbar.scrolled .nav-link-item,
+  #main-navbar:not([data-transparent="1"]) .nav-link-item { color: #4B5563 !important; }
+  
   #main-navbar.scrolled .nav-link-item:hover,
-  #main-navbar.scrolled .nav-link-item.active { color: <?= COLOR_SECONDARY ?> !important; }
-  #main-navbar.scrolled .auth-link { color: #111827 !important; }
-  #main-navbar.scrolled .auth-link:hover { color: <?= COLOR_SECONDARY ?> !important; }
+  #main-navbar.scrolled .nav-link-item.active,
+  #main-navbar:not([data-transparent="1"]) .nav-link-item:hover,
+  #main-navbar:not([data-transparent="1"]) .nav-link-item.active { color: <?= COLOR_SECONDARY ?> !important; }
+  
+  #main-navbar.scrolled .auth-link,
+  #main-navbar:not([data-transparent="1"]) .auth-link { color: #111827 !important; }
+  
+  #main-navbar.scrolled .auth-link:hover,
+  #main-navbar:not([data-transparent="1"]) .auth-link:hover { color: <?= COLOR_SECONDARY ?> !important; }
   
   /* Ensure logo icon is visible if header is primary */
   #main-navbar.bg-primary .logo-icon { background-color: white !important; }
