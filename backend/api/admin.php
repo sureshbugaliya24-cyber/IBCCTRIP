@@ -33,15 +33,29 @@ $toNull= fn($v) => ($v === '' || $v === 'null' || $v === null) ? null : $v;
 
 function deleteFile($url) {
     if (!$url) return;
-    $filename = basename($url);
-    $path = realpath(__DIR__ . '/../../') . '/uploads/' . $filename;
-    if (file_exists($path)) @unlink($path);
+    $path = parse_url($url, PHP_URL_PATH); // /IBCCTRIP/uploads/...
+    if (!$path) return;
+    
+    // Extract everything after /uploads/ to keep subfolder relative paths
+    $parts = explode('/uploads/', $path);
+    if (count($parts) > 1) {
+        $relativePath = $parts[1];
+        $physicalPath = realpath(__DIR__ . '/../../') . '/uploads/' . ltrim($relativePath, '/');
+        if (file_exists($physicalPath) && is_file($physicalPath)) {
+            @unlink($physicalPath);
+        }
+    }
 }
 
-function handleUpload($fileArray, $uploadDir = '../../uploads/', $prefix = 'img', $useRandomSuffix = true) {
-    if (!isset($fileArray) || $fileArray['error'] !== UPLOAD_ERR_OK) return null;
+$uploadedFilesForRollback = [];
+
+function handleUpload($fileArray, $subfolder = '', $prefix = 'img', $useRandomSuffix = true) {
+    global $uploadedFilesForRollback;
+    if (!isset($fileArray)) { error_log("Upload failed: File array not set"); return null; }
+    if ($fileArray['error'] !== UPLOAD_ERR_OK) { error_log("Upload failed: Error code " . $fileArray['error']); return null; }
+    
     $ext = strtolower(pathinfo($fileArray['name'], PATHINFO_EXTENSION));
-    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) return null;
+    if (!in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp'])) { error_log("Upload failed: Invalid extension $ext"); return null; }
     
     // SEO Friendly naming
     $cleanPrefix = preg_replace('/[^a-z0-9]+/', '-', strtolower($prefix));
@@ -50,15 +64,20 @@ function handleUpload($fileArray, $uploadDir = '../../uploads/', $prefix = 'img'
     
     $filename = $cleanPrefix . ($useRandomSuffix ? '_' . bin2hex(random_bytes(4)) : '') . '.' . $ext;
     
-    // Use root uploads directory by default
-    $targetPath = realpath(__DIR__ . '/../../') . '/uploads/' . $filename;
+    // Base uploads dir
+    $baseUploads = realpath(__DIR__ . '/../../') . '/uploads/';
+    $subfolder = trim($subfolder, '/');
+    if ($subfolder) $baseUploads .= $subfolder . '/';
+    
+    $targetPath = $baseUploads . $filename;
     
     // Ensure dir exists
-    $dirPath = dirname($targetPath);
-    if (!is_dir($dirPath)) mkdir($dirPath, 0777, true);
+    if (!is_dir($baseUploads)) mkdir($baseUploads, 0777, true);
     
     if (move_uploaded_file($fileArray['tmp_name'], $targetPath)) {
-        return BASE_URL . '/uploads/' . $filename; 
+        $urlPath = '/uploads/' . ($subfolder ? $subfolder . '/' : '') . $filename;
+        $uploadedFilesForRollback[] = BASE_URL . $urlPath;
+        return BASE_URL . $urlPath; 
     }
     return null;
 }
@@ -226,17 +245,17 @@ try {
                 
                 $slug = $input['slug'] ?? $oldTrip['slug'];
                 
-                $coverImage = handleUpload($_FILES['cover_image'] ?? null, '../../uploads/', ($slug ?: 'trip-cover') . '-' . time(), false);
-                if ($coverImage) { $sets[] = "`cover_image` = ?"; $vals[] = $coverImage; }
+                $coverImage = handleUpload($_FILES['cover_image'] ?? null, 'trip', ($slug ?: 'trip-cover') . '-' . time(), false);
+                if ($coverImage) { 
+                    deleteFile($oldTrip['cover_image'] ?? '');
+                    $sets[] = "`cover_image` = ?"; $vals[] = $coverImage; 
+                }
                 
                 if (!empty($_FILES['map_image'])) {
                     // Delete old map if exists
-                    if (!empty($oldTrip['map_image'])) {
-                        $oldMapPath = realpath(__DIR__ . '/../../') . '/uploads/' . basename($oldTrip['map_image']);
-                        if (file_exists($oldMapPath)) @unlink($oldMapPath);
-                    }
+                    deleteFile($oldTrip['map_image'] ?? '');
                     // Add timestamp to map image for cache busting
-                    $mapImage = handleUpload($_FILES['map_image'], '../../uploads/', ($slug ?: 'trip') . '-map-' . time(), false);
+                    $mapImage = handleUpload($_FILES['map_image'], 'trip', ($slug ?: 'trip') . '-map-' . time(), false);
                     if ($mapImage) { $sets[] = "`map_image` = ?"; $vals[] = $mapImage; }
                 }
 
@@ -464,12 +483,19 @@ try {
                 foreach($fields as $f) {
                     if (array_key_exists($f, $input)) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
                 }
-                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
-                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle . '-' . time(), false);
-                if ($img) { $sets[] = "`featured_image` = ?"; $vals[] = $img; }
+                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'country');
+                $img = handleUpload($_FILES['featured_image'] ?? null, 'countries', $metaTitle . '-' . time(), false);
+                if ($img) { 
+                    if ($action === 'update') {
+                        $oldImg = $pdo->prepare("SELECT featured_image FROM countries WHERE id=?");
+                        $oldImg->execute([$id]);
+                        deleteFile($oldImg->fetchColumn());
+                    }
+                    $sets[] = "`featured_image` = ?"; $vals[] = $img; 
+                }
 
                 if ($action === 'create') {
-                    $pdo->prepare("INSERT INTO countries (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    $pdo->prepare("INSERT INTO countries (".implode(',', array_map(fn($f)=>trim(str_replace(['`','='], '', explode('?', $f)[0])), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
                     ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Created');
                 } else {
                     $vals[] = $id;
@@ -500,12 +526,19 @@ try {
                         $vals[] = $val;
                     }
                 }
-                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
-                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
-                if ($img) { $sets[] = "`featured_image` = ?"; $vals[] = $img; }
+                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'state');
+                $img = handleUpload($_FILES['featured_image'] ?? null, 'states', $metaTitle . '-' . time(), false);
+                if ($img) { 
+                    if ($action === 'update') {
+                        $oldImg = $pdo->prepare("SELECT featured_image FROM states WHERE id=?");
+                        $oldImg->execute([$id]);
+                        deleteFile($oldImg->fetchColumn());
+                    }
+                    $sets[] = "`featured_image` = ?"; $vals[] = $img; 
+                }
 
                 if ($action === 'create') {
-                    $pdo->prepare("INSERT INTO states (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    $pdo->prepare("INSERT INTO states (".implode(',', array_map(fn($f)=>trim(str_replace(['`','='], '', explode('?', $f)[0])), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
                     ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Created');
                 } else {
                     $vals[] = $id;
@@ -536,12 +569,19 @@ try {
                         $vals[] = $val;
                     }
                 }
-                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
-                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
-                if ($img) { $sets[] = "`featured_image` = ?"; $vals[] = $img; }
+                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'city');
+                $img = handleUpload($_FILES['featured_image'] ?? null, 'cities', $metaTitle . '-' . time(), false);
+                if ($img) { 
+                    if ($action === 'update') {
+                        $oldImg = $pdo->prepare("SELECT featured_image FROM cities WHERE id=?");
+                        $oldImg->execute([$id]);
+                        deleteFile($oldImg->fetchColumn());
+                    }
+                    $sets[] = "`featured_image` = ?"; $vals[] = $img; 
+                }
 
                 if ($action === 'create') {
-                    $pdo->prepare("INSERT INTO cities (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    $pdo->prepare("INSERT INTO cities (".implode(',', array_map(fn($f)=>trim(str_replace(['`','='], '', explode('?', $f)[0])), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
                     ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Created');
                 } else {
                     $vals[] = $id;
@@ -572,12 +612,19 @@ try {
                         $vals[] = $val;
                     }
                 }
-                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'dest');
-                $img = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
-                if ($img) { $sets[] = "`featured_image` = ?"; $vals[] = $img; }
+                $metaTitle = $clean($input['meta_title'] ?? $input['name'] ?? 'place');
+                $img = handleUpload($_FILES['featured_image'] ?? null, 'places', $metaTitle . '-' . time(), false);
+                if ($img) { 
+                    if ($action === 'update') {
+                        $oldImg = $pdo->prepare("SELECT featured_image FROM places WHERE id=?");
+                        $oldImg->execute([$id]);
+                        deleteFile($oldImg->fetchColumn());
+                    }
+                    $sets[] = "`featured_image` = ?"; $vals[] = $img; 
+                }
 
                 if ($action === 'create') {
-                    $pdo->prepare("INSERT INTO places (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    $pdo->prepare("INSERT INTO places (".implode(',', array_map(fn($f)=>trim(str_replace(['`','='], '', explode('?', $f)[0])), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
                     ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Created');
                 } else {
                     $vals[] = $id;
@@ -594,6 +641,35 @@ try {
             break;
 
         // ---- BLOGS ----
+        case 'blog_categories':
+            if ($action === 'list') {
+                $stmt = $pdo->query("SELECT bc.*, (SELECT COUNT(id) FROM blogs WHERE category_id = bc.id) as blog_count FROM blog_categories bc ORDER BY bc.name ASC");
+                ResponseHelper::success($stmt->fetchAll());
+            } elseif ($action === 'create' || ($action === 'update' && $id)) {
+                $name = trim($input['name'] ?? '');
+                $slug = trim($input['slug'] ?? '');
+                if (!$name || !$slug) ResponseHelper::error('Name and slug are required');
+                try {
+                    if ($action === 'create') {
+                        $pdo->prepare("INSERT INTO blog_categories (name, slug) VALUES (?, ?)")->execute([$name, $slug]);
+                        ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Category created');
+                    } else {
+                        $pdo->prepare("UPDATE blog_categories SET name=?, slug=? WHERE id=?")->execute([$name, $slug, $id]);
+                        ResponseHelper::success([], 'Category updated');
+                    }
+                } catch(PDOException $e) {
+                    if ($e->getCode() == 23000) ResponseHelper::error('Category slug already exists');
+                    throw $e;
+                }
+            } elseif ($action === 'delete' && $id) {
+                $c = $pdo->prepare("SELECT COUNT(*) FROM blogs WHERE category_id=?");
+                $c->execute([$id]);
+                if ($c->fetchColumn() > 0) ResponseHelper::error('Cannot delete: blogs fall under this category.');
+                $pdo->prepare("DELETE FROM blog_categories WHERE id=?")->execute([$id]);
+                ResponseHelper::success([], 'Category deleted');
+            }
+            break;
+
         case 'blogs':
             $page   = max(1, (int)($_GET['page'] ?? 1));
             $limit  = 20;
@@ -621,12 +697,19 @@ try {
                     }
                 }
                 $metaTitle = $clean($input['meta_title'] ?? $input['title'] ?? 'blog');
-                $featImg = handleUpload($_FILES['featured_image'] ?? null, '../../uploads/', $metaTitle);
-                if ($featImg) { $sets[] = "`featured_image` = ?"; $vals[] = $featImg; }
+                $featImg = handleUpload($_FILES['featured_image'] ?? null, 'blog', $metaTitle . '-' . time(), false);
+                if ($featImg) { 
+                    if ($action === 'update') {
+                        $oldImg = $pdo->prepare("SELECT featured_image FROM blogs WHERE id=?");
+                        $oldImg->execute([$id]);
+                        deleteFile($oldImg->fetchColumn());
+                    }
+                    $sets[] = "`featured_image` = ?"; $vals[] = $featImg; 
+                }
 
                 if ($action === 'create') {
                     if (empty($sets)) ResponseHelper::error('Missing data');
-                    $pdo->prepare("INSERT INTO blogs (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    $pdo->prepare("INSERT INTO blogs (".implode(',', array_map(fn($f)=>trim(str_replace(['`','='], '', explode('?', $f)[0])), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
                     ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Blog created');
                 } else {
                     if (!empty($sets)) {
@@ -656,7 +739,7 @@ try {
                 $countStmt->execute([$id]);
                 $currentCount = (int)$countStmt->fetchColumn();
                 
-                $imgUrl = handleUpload($_FILES['file'] ?? null, '../../uploads/', $slug . '-gallery-' . ($currentCount + 1), false);
+                $imgUrl = handleUpload($_FILES['file'] ?? null, 'trip', $slug . '-gallery-' . ($currentCount + 1), false);
                 if ($imgUrl) {
                     $gStmt = $pdo->prepare("INSERT INTO trip_gallery (trip_id, image_url, alt_text, sort_order) VALUES (?,?,?,?)");
                     $gStmt->execute([$id, $imgUrl, '', $currentCount]);
@@ -674,9 +757,7 @@ try {
                 $stmt->execute([$id]);
                 $img = $stmt->fetchColumn();
                 if ($img) {
-                    $filename = basename($img);
-                    $path = realpath(__DIR__ . '/../../') . '/uploads/' . $filename;
-                    if (file_exists($path)) @unlink($path);
+                    deleteFile($img);
                 }
                 $pdo->prepare("DELETE FROM trip_gallery WHERE id=?")->execute([$id]);
                 ResponseHelper::success([], 'Gallery image removed');
@@ -720,11 +801,18 @@ try {
                 foreach ($fields as $f) {
                     if (isset($input[$f])) { $sets[] = "`$f` = ?"; $vals[] = $input[$f]; }
                 }
-                $featImg = handleUpload($_FILES['image'] ?? null, '../../uploads/', 'testimonial-user');
-                if ($featImg) { $sets[] = "`image` = ?"; $vals[] = $featImg; }
+                $featImg = handleUpload($_FILES['image'] ?? null, 'testimonials', 'testimonial-user-' . time(), false);
+                if ($featImg) { 
+                    if ($action === 'update') {
+                        $oldImg = $pdo->prepare("SELECT image FROM testimonials WHERE id=?");
+                        $oldImg->execute([$id]);
+                        deleteFile($oldImg->fetchColumn());
+                    }
+                    $sets[] = "`image` = ?"; $vals[] = $featImg; 
+                }
 
                 if ($action === 'create') {
-                    $pdo->prepare("INSERT INTO testimonials (".implode(',', array_map(fn($f)=>str_replace('`','',$f), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
+                    $pdo->prepare("INSERT INTO testimonials (".implode(',', array_map(fn($f)=>trim(str_replace(['`','='], '', explode('?', $f)[0])), $sets)).") VALUES (".implode(',', array_fill(0, count($sets), '?')).")")->execute($vals);
                     ResponseHelper::success(['id' => (int)$pdo->lastInsertId()], 'Testimonial created');
                 } else {
                     $vals[] = $id;
@@ -777,13 +865,14 @@ try {
                         if (strpos($key, 'placeholder_') === 0) {
                             $prefix = str_replace(['placeholder_', '_image', '_'], ['', '', '-'], $key) . '-dummy-img';
                         }
-                        $img = handleUpload($file, '../../uploads/', $prefix, false);
+                        $catSub = (strpos($key, 'placeholder') !== false) ? 'placeholders' : 'branding';
+                        $img = handleUpload($file, $catSub, $prefix, false);
                         if ($img) {
                             // Cleanup old file
                             $stmtOld = $pdo->prepare("SELECT s_value FROM site_settings WHERE s_key = ?");
                             $stmtOld->execute([$key]);
                             $oldUrl = $stmtOld->fetchColumn();
-                            if ($oldUrl && $oldUrl !== $img) {
+                            if ($oldUrl && basename($oldUrl) !== basename($img)) {
                                 deleteFile($oldUrl);
                             }
                             
@@ -839,7 +928,7 @@ try {
                 $stmt = $pdo->query("SELECT * FROM gallery ORDER BY created_at DESC");
                 ResponseHelper::success($stmt->fetchAll());
             } elseif ($action === 'create') {
-                $img = handleUpload($_FILES['file'] ?? null, '../../uploads/', 'gallery-item');
+                $img = handleUpload($_FILES['file'] ?? null, 'gallery', 'gallery-item');
                 if (!$img) ResponseHelper::error('Upload failed');
                 
                 $stmt = $pdo->prepare("INSERT INTO gallery (image_url, category, caption) VALUES (?, ?, ?)");
@@ -858,7 +947,11 @@ try {
             ResponseHelper::error('Invalid resource', 400);
     }
 } catch (PDOException $e) {
+    global $uploadedFilesForRollback;
+    foreach ($uploadedFilesForRollback as $fileUrl) {
+        deleteFile($fileUrl);
+    }
     ResponseHelper::error(
-        APP_ENV === 'production' ? 'Server error' : $e->getMessage(), 500
+        APP_ENV === 'production' ? 'Database error' : $e->getMessage(), 500
     );
 }

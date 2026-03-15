@@ -44,10 +44,14 @@ $mappings = [
     'YOUTUBE_URL'  => 'youtube_url',
     
     // Placeholders
-    'PLACEHOLDER_GENERAL' => 'placeholder_general',
-    'PLACEHOLDER_TRIP'    => 'placeholder_trip',
-    'PLACEHOLDER_BLOG'    => 'placeholder_blog',
-    'PLACEHOLDER_CITY'    => 'placeholder_city'
+    'PLACEHOLDER_GENERAL'           => 'placeholder_general',
+    'PLACEHOLDER_TRIP'              => 'placeholder_trip',
+    'PLACEHOLDER_BLOG'              => 'placeholder_blog',
+    'PLACEHOLDER_CITY'              => 'placeholder_city',
+    'PLACEHOLDER_DESTINATION_IMAGE' => 'placeholder_destination',
+    'PLACEHOLDER_TRIP_COVER_IMAGE'  => 'placeholder_trip_cover',
+    'PLACEHOLDER_TRIP_MAP_IMAGE'    => 'placeholder_trip_map',
+    'PLACEHOLDER_TRIP_GALLERY_IMAGE'=> 'placeholder_trip_gallery'
 ];
 
 foreach ($mappings as $const => $key) {

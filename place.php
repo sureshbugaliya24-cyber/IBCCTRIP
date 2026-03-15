@@ -42,7 +42,11 @@ if (empty($resp['success'])) redirect(FRONTEND_URL . '/place');
 $place = $resp['data'] ?? [];
 $trips = $place['trips'] ?? [];
 
-$pageTitle = $place['name'] ?? 'Place';
+$pageTitle = !empty($place['meta_title']) ? $place['meta_title'] : ($place['name'] ?? 'Place');
+$pageDesc = $place['meta_description'] ?? '';
+$pageKeywords = $place['meta_keywords'] ?? '';
+$exactTitle = !empty($place['meta_title']);
+
 $activePage = 'destinations';
 $transparent = true;
 
@@ -51,7 +55,7 @@ require_once __DIR__ . '/layouts/header.php';
 ?>
 
 <div class="relative h-[45vh] min-h-[300px] overflow-hidden">
-  <img src="<?= e($place['featured_image'] ?? '') ?>" class="w-full h-full object-cover">
+  <img src="<?= img_url($place['featured_image'] ?? null, 'destination') ?>" class="w-full h-full object-cover">
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
   <div class="absolute inset-0 flex flex-col justify-end pb-12 px-4 max-w-7xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
@@ -71,8 +75,8 @@ require_once __DIR__ . '/layouts/header.php';
     <div class="flex-1 min-w-0">
       <div class="bg-white rounded-3xl p-8 md:p-12 shadow-sm border border-gray-100 mb-16">
         <h2 class="text-2xl font-extrabold text-gray-900 mb-6">About <?= e($place['name'] ?? '') ?></h2>
-        <div class="text-gray-600 leading-relaxed text-sm md:text-base">
-          <?= nl2br(e($place['description'] ?? '')) ?>
+        <div class="quill-content text-gray-600 leading-relaxed text-sm md:text-base">
+          <?= $place['description'] ?? '' ?>
         </div>
       </div>
 

@@ -51,24 +51,30 @@ window.previewImage = function(input, prevId, placeId) {
     }
 };
 
-window.filterStates = function(countryId) {
-    const sSelect = document.getElementById('t-sid');
-    const filtered = globals.states.filter(s => !countryId || s.country_id == countryId);
-    sSelect.innerHTML = buildSel(filtered, '');
-    filterCities(''); // Reset child
+window.filterStates = function(countryId, stateTargetId = 't-sid', cityTargetId = 't-cityid', placeTargetId = 't-plid') {
+    const sSelect = document.getElementById(stateTargetId);
+    if(sSelect) {
+        const filtered = globals.states.filter(s => !countryId || s.country_id == countryId);
+        sSelect.innerHTML = buildSel(filtered, '');
+    }
+    window.filterCities('', cityTargetId, placeTargetId); // Reset child
 };
 
-window.filterCities = function(stateId) {
-    const cSelect = document.getElementById('t-cityid');
-    const filtered = globals.cities.filter(c => !stateId || c.state_id == stateId);
-    cSelect.innerHTML = buildSel(filtered, '');
-    filterPlaces(''); // Reset child
+window.filterCities = function(stateId, cityTargetId = 't-cityid', placeTargetId = 't-plid') {
+    const cSelect = document.getElementById(cityTargetId);
+    if(cSelect) {
+        const filtered = globals.cities.filter(c => !stateId || c.state_id == stateId);
+        cSelect.innerHTML = buildSel(filtered, '');
+    }
+    window.filterPlaces('', placeTargetId); // Reset child
 };
 
-window.filterPlaces = function(cityId) {
-    const pSelect = document.getElementById('t-plid');
-    const filtered = (globals.places || []).filter(p => !cityId || p.city_id == cityId);
-    pSelect.innerHTML = buildSel(filtered, '');
+window.filterPlaces = function(cityId, placeTargetId = 't-plid') {
+    const pSelect = document.getElementById(placeTargetId);
+    if(pSelect) {
+        const filtered = (globals.places || []).filter(p => !cityId || p.city_id == cityId);
+        pSelect.innerHTML = buildSel(filtered, '');
+    }
 };
 
 /* ============================================================
@@ -274,6 +280,37 @@ window.saveTrip = async function(e, id) {
 /* ============================================================
    BLOGS
    ============================================================ */
+window.saveBlog = async function(e, id) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const og = btn.textContent; btn.textContent = 'Saving...'; btn.disabled = true;
+
+    const catId = gv('b-cat');
+    if (!catId || catId === 'new') {
+        Utils.toast('Please select or create a valid Category.', 'error');
+        btn.textContent = og; btn.disabled = false;
+        return;
+    }
+
+    const d = new FormData();
+    d.append('title',gv('b-title')); d.append('slug',gv('b-slug'));
+    d.append('author',gv('b-author')); d.append('status',gv('b-status'));
+    d.append('category_id', catId);
+    d.append('tags',gv('b-tags'));
+    d.append('country_id',gv('b-cid')); d.append('state_id',gv('b-sid'));
+    d.append('city_id',gv('b-cityid'));
+    d.append('excerpt',gv('b-exc'));
+    d.append('content',window.activeQuill?window.activeQuill.root.innerHTML:'');
+    d.append('meta_title',gv('b-mTitle'));
+    d.append('meta_description',gv('b-mDesc'));
+    d.append('meta_keywords',gv('b-mKw'));
+    const f=document.getElementById('b-image'); if(f?.files[0]) d.append('featured_image',f.files[0]);
+    const r = id ? await API.admin.updateBlog(id,d,true) : await API.admin.createBlog(d,true);
+    btn.textContent=og; btn.disabled=false;
+    if(r?.success){Utils.toast('Saved!'); CRUD.close(); loadBlogs();}
+    else Utils.toast(r?.message||'Error','error');
+};
+
 window.renderBlogForm = function(b={}) {
     const id = b.id||null;
     return `<form onsubmit="saveBlog(event,${id})" class="space-y-2">
@@ -282,15 +319,15 @@ window.renderBlogForm = function(b={}) {
       ${fldWrap('Slug *','<input required id="b-slug" value="'+esc(b.slug||'')+'" class="w-full border rounded-lg p-2 text-sm">')}
       ${fldWrap('Author',inp('b-author',b.author||'','text','Author name'))}
       ${fldWrap('Status',sel('b-status',`<option value="Draft" ${b.status==='Draft'?'selected':''}>Draft</option><option value="Published" ${b.status==='Published'?'selected':''}>Published</option>`))}
-      ${fldWrap('Category',sel('b-cat',buildSel(globals.categories,b.category_id)))}
+      ${fldWrap('Category *', `<select id="b-cat" required class="w-full border bg-white rounded-lg p-2 text-sm">${buildSel(globals.categories, b.category_id)}</select>`)}
       ${fldWrap('Tags',inp('b-tags',b.tags||'','text','tag1, tag2'))}
     </div>
 
     ${sec('📍','Destination (Article About)')}
     <div class="grid grid-cols-3 gap-3">
-      ${fldWrap('Country',sel('b-cid',buildSel(globals.countries,b.country_id)))}
-      ${fldWrap('State',sel('b-sid',buildSel(globals.states,b.state_id)))}
-      ${fldWrap('City',sel('b-cityid',buildSel(globals.cities,b.city_id)))}
+      ${fldWrap('Country', `<select id="b-cid" onchange="filterStates(this.value, 'b-sid', 'b-cityid')" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.countries, b.country_id)}</select>`)}
+      ${fldWrap('State', `<select id="b-sid" onchange="filterCities(this.value, 'b-cityid')" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.states.filter(s => !b.country_id || s.country_id == b.country_id), b.state_id)}</select>`)}
+      ${fldWrap('City', `<select id="b-cityid" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.cities.filter(c => !b.state_id || c.state_id == b.state_id), b.city_id)}</select>`)}
     </div>
 
     ${sec('🖼️','Featured Image')}
@@ -341,9 +378,27 @@ window.saveBlog = async function(e, id) {
 window.renderDestForm = function(d={}, type='countries') {
     const id = d.id||null;
     let parentHtml='';
-    if(type==='states') parentHtml = fldWrap('Country',sel('d-parent',buildSel(globals.countries,d.country_id)));
-    if(type==='cities') parentHtml = fldWrap('State',sel('d-parent',buildSel(globals.states,d.state_id)));
-    if(type==='places') parentHtml = fldWrap('City',sel('d-parent',buildSel(globals.cities,d.city_id)));
+    
+    let cid = '', sid = d.state_id || '', cityid = d.city_id || '';
+    if (type === 'states') {
+        cid = d.country_id || '';
+        parentHtml = fldWrap('Country *', `<select id="d-parent" required class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.countries, cid)}</select>`);
+    } else if (type === 'cities') {
+        if (d.state_id) cid = globals.states?.find(s => s.id == d.state_id)?.country_id || '';
+        parentHtml = fldWrap('Country', `<select id="d-cid" onchange="filterStates(this.value, 'd-parent')" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.countries, cid)}</select>`) +
+                     fldWrap('State *', `<select id="d-parent" required class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.states.filter(s => !cid || s.country_id == cid), sid)}</select>`);
+    } else if (type === 'places') {
+        if (d.city_id) {
+            sid = globals.cities?.find(c => c.id == d.city_id)?.state_id || '';
+            cid = globals.states?.find(s => s.id == sid)?.country_id || '';
+        }
+        parentHtml = `<div class="col-span-2 grid grid-cols-3 gap-3">` + 
+                     fldWrap('Country', `<select id="d-cid" onchange="filterStates(this.value, 'd-sid', 'd-parent')" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.countries, cid)}</select>`) +
+                     fldWrap('State', `<select id="d-sid" onchange="filterCities(this.value, 'd-parent')" class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.states.filter(s => !cid || s.country_id == cid), sid)}</select>`) +
+                     fldWrap('City *', `<select id="d-parent" required class="w-full border rounded-lg p-2 text-sm">${buildSel(globals.cities.filter(c => !sid || c.state_id == sid), cityid)}</select>`) +
+                     `</div>`;
+    }
+
     const codeHtml = type==='countries' ? fldWrap('Country Code',inp('d-code',d.code||'','text','IN')) : '';
     const flagHtml = type==='countries' ? fldWrap('Flag Emoji',inp('d-flag',d.flag_icon||'','text','🇮🇳')) : '';
 

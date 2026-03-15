@@ -9,7 +9,7 @@ function renderCountryCard(array $c): void {
     $slug  = e($c['slug'] ?? '');
     $name  = e($c['name'] ?? 'Country');
     $flag  = e($c['flag_icon'] ?? '🌍');
-    $img   = img_url($c['featured_image'] ?? null, 'city');
+    $img   = img_url($c['featured_image'] ?? null, 'destination');
     $count = (int)($c['trip_count'] ?? 0);
     $url   = FRONTEND_URL . '/country/' . urlencode($c['slug'] ?? '');
     ?>

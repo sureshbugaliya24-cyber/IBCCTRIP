@@ -33,12 +33,15 @@ if (empty($resp['success'])) {
 $blog     = $resp['data'] ?? [];
 $related  = $blog['related'] ?? [];
 
-$pageTitle    = $blog['title'] ?? 'Blog Post';
+$pageTitle    = !empty($blog['meta_title']) ? $blog['meta_title'] : ($blog['title'] ?? 'Blog Post');
 $pageDesc     = $blog['meta_description'] ?: ($blog['excerpt'] ?? '');
-$ogImage      = $blog['featured_image'] ?? '';
 $pageKeywords = $blog['meta_keywords'] ?? '';
+$exactTitle   = !empty($blog['meta_title']);
+
+$blogImg      = img_url($blog['featured_image'] ?? null, 'blog');
+$ogImage      = $blogImg;
 $activePage   = 'blog';
-$transparent = true;
+$transparent  = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -46,7 +49,7 @@ require_once __DIR__ . '/layouts/header.php';
 
 <!-- ===== HERO ===== -->
 <div class="relative h-80 md:h-[28rem] overflow-hidden">
-  <img src="<?= e($blog['featured_image'] ?? '') ?>"
+  <img src="<?= e($blogImg) ?>"
        alt="<?= e($blog['title'] ?? '') ?>"
        class="w-full h-full object-cover">
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent"></div>

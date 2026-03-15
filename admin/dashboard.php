@@ -121,7 +121,7 @@ $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . 
       }
     };
   </script>
-  <script src="<?= ADMIN_URL?>/cms-forms.js?v=<?= APP_VERSION?>"></script>
+  <script src="<?= ADMIN_URL?>/cms-forms.js?v=<?= time() ?>"></script>
 </head>
 
 <body class="flex min-h-screen">
@@ -239,8 +239,8 @@ echo renderLogo('full', '');
   <div id="modal-root"></div>
 
   <!-- App Logic Wrapper => admin.js logic will be here for now -->
-  <script src="<?= FRONTEND_URL?>/js/app.js"></script>
-  <script src="<?= FRONTEND_URL?>/admin/cms-forms.js"></script>
+  <script src="<?= FRONTEND_URL?>/js/app.js?v=<?= time() ?>"></script>
+  <script src="<?= FRONTEND_URL?>/admin/cms-forms.js?v=<?= time() ?>"></script>
   <script>
     // Minimalistic dashboard state handler (converted from dashboard.html logic)
     const API_URL = window.APP_CONFIG.API_URL;
@@ -616,42 +616,130 @@ echo renderLogo('full', '');
 
     // --- BLOGS ---
     let currentBlogs = [];
-    async function loadBlogs() {
-      const r = await API.admin.getBlogs();
-      currentBlogs = r.data || [];
-      renderBlogs(currentBlogs);
+    let currentBlogCategoriesList = [];
+    let currentBlogTab = 'posts';
+
+    async function loadBlogs(tab = 'posts') {
+      currentBlogTab = tab;
+      if (tab === 'posts') {
+          const r = await API.admin.getBlogs();
+          currentBlogs = r.data || [];
+          renderBlogs(currentBlogs, 'posts');
+      } else {
+          const r = await API.get('/admin.php?resource=blog_categories&action=list');
+          currentBlogCategoriesList = r.data || [];
+          renderBlogs(currentBlogCategoriesList, 'categories');
+      }
     }
-    function renderBlogs(list) {
-      document.getElementById('page-content').innerHTML = `
-        <div class="mb-5 flex justify-end"><button onclick="editBlog()" class="bg-primary hover:bg-blue-800 transition-colors text-white text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-2xl shadow-lg hover:shadow-xl">+ Add New Blog</button></div>
-        <div class="card overflow-hidden">
-          <table class="w-full tbl text-left">
-            <thead class="bg-gray-50 border-b border-gray-100"><tr><th class="p-4">Image</th><th class="p-4">Title</th><th class="p-4">Status</th><th class="p-4">Author</th><th class="p-4">Action</th></tr></thead>
-            <tbody>${list.map(b => `<tr>
-              <td class="p-4">
-                <div class="w-14 h-10 rounded-xl overflow-hidden border shadow-sm">
-                    <img src="${b.featured_image || ''}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/100?text=Blog'">
-                </div>
-              </td>
-              <td class="p-4 font-extrabold text-gray-900">${b.title}</td>
-              <td class="p-4">
-                <span class="text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${b.status === 'Published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">${b.status || 'Draft'}</span>
-              </td>
-              <td class="p-4 text-gray-500 text-sm font-medium">${b.author}</td>
-              <td class="p-4">
-                <div class="flex gap-2 text-xs font-bold">
-                    <button onclick="editBlog(${b.id})" class="text-primary hover:underline">Edit</button> |
-                    <button onclick="deleteEntity('blogs', ${b.id})" class="text-red-500 hover:underline">Delete</button>
-                </div>
-              </td>
-            </tr>`).join('') || '<tr><td colspan="5" class="text-center text-gray-400 py-10">No blogs found</td></tr>'}</tbody>
-          </table>
-        </div>`;
+    
+    function renderBlogs(list, tab) {
+      if (tab === 'categories') {
+          document.getElementById('page-content').innerHTML = `
+            <div class="flex flex-wrap gap-2 mb-5">
+                <button onclick="loadBlogs('posts')" class="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-sm bg-white text-gray-500 hover:bg-gray-50">Posts</button>
+                <button onclick="loadBlogs('categories')" class="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-sm bg-primary text-white scale-105">Categories</button>
+                <div class="ml-auto flex gap-2"><button onclick="editBlogCategory()" class="bg-secondary text-white text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all">+ Add Category</button></div>
+            </div>
+            <div class="card overflow-hidden">
+              <table class="w-full tbl text-left">
+                <thead class="bg-gray-50 border-b border-gray-100"><tr><th class="p-4">Name</th><th class="p-4">Slug</th><th class="p-4">Total Posts</th><th class="p-4">Action</th></tr></thead>
+                <tbody>${list.map(c => `<tr>
+                  <td class="p-4 font-extrabold text-gray-900">${c.name}</td>
+                  <td class="p-4 text-sm text-gray-500">/${c.slug}</td>
+                  <td class="p-4 text-sm font-bold text-gray-500">${c.blog_count || 0} Posts</td>
+                  <td class="p-4">
+                    <div class="flex gap-2 text-xs font-bold">
+                        <button onclick="editBlogCategory(${c.id})" class="text-primary hover:underline">Edit</button> |
+                        <button onclick="deleteEntity('blog_categories', ${c.id})" class="text-red-500 hover:underline">Delete</button>
+                    </div>
+                  </td>
+                </tr>`).join('') || '<tr><td colspan="4" class="text-center text-gray-400 py-10">No categories found</td></tr>'}</tbody>
+              </table>
+            </div>`;
+      } else {
+          document.getElementById('page-content').innerHTML = `
+            <div class="flex flex-wrap gap-2 mb-5">
+                <button onclick="loadBlogs('posts')" class="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-sm bg-primary text-white scale-105">Posts</button>
+                <button onclick="loadBlogs('categories')" class="px-5 py-2.5 rounded-2xl text-xs font-black uppercase tracking-wider transition-all shadow-sm bg-white text-gray-500 hover:bg-gray-50">Categories</button>
+                <div class="ml-auto flex gap-2"><button onclick="editBlog()" class="bg-secondary text-white text-xs font-black uppercase tracking-wider px-6 py-2.5 rounded-2xl shadow-lg hover:shadow-xl transition-all">+ Add New Blog</button></div>
+            </div>
+            <div class="card overflow-hidden">
+              <table class="w-full tbl text-left">
+                <thead class="bg-gray-50 border-b border-gray-100"><tr><th class="p-4">Image</th><th class="p-4">Title</th><th class="p-4">Status</th><th class="p-4">Author</th><th class="p-4">Action</th></tr></thead>
+                <tbody>${list.map(b => `<tr>
+                  <td class="p-4">
+                    <div class="w-14 h-10 rounded-xl overflow-hidden border shadow-sm">
+                        <img src="${b.featured_image || ''}" class="w-full h-full object-cover" onerror="this.src='https://placehold.co/100?text=Blog'">
+                    </div>
+                  </td>
+                  <td class="p-4 font-extrabold text-gray-900">${b.title}</td>
+                  <td class="p-4">
+                    <span class="text-[10px] px-2 py-0.5 rounded-full font-black uppercase tracking-tighter ${b.status === 'Published' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">${b.status || 'Draft'}</span>
+                  </td>
+                  <td class="p-4 text-gray-500 text-sm font-medium">${b.author}</td>
+                  <td class="p-4">
+                    <div class="flex gap-2 text-xs font-bold">
+                        <button onclick="editBlog(${b.id})" class="text-primary hover:underline">Edit</button> |
+                        <button onclick="deleteEntity('blogs', ${b.id})" class="text-red-500 hover:underline">Delete</button>
+                    </div>
+                  </td>
+                </tr>`).join('') || '<tr><td colspan="5" class="text-center text-gray-400 py-10">No blogs found</td></tr>'}</tbody>
+              </table>
+            </div>`;
+      }
     }
     window.editBlog = (id = null) => {
       const b = id ? currentBlogs.find(x => x.id === id) : {};
       CRUD.show(id ? 'Edit Blog' : 'Add New Blog', renderBlogForm(b));
       setTimeout(() => CRUD.initQuill('#b-content-editor', b.content || ''), 50);
+    };
+    
+    window.renderBlogCategoryForm = function(c={}) {
+        const id = c.id || null;
+        return `<form onsubmit="saveBlogCategory(event, ${id})" class="space-y-3">
+          ${fldWrap('Category Name *','<input required id="bc-name" value="'+esc(c.name||'')+'" class="w-full border rounded-lg p-2 text-sm">')}
+          ${fldWrap('Slug *','<input required id="bc-slug" value="'+esc(c.slug||'')+'" class="w-full border rounded-lg p-2 text-sm">')}
+          <div class="pt-4 flex justify-end gap-2">
+            <button type="button" onclick="CRUD.close()" class="px-5 py-2 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-100">Cancel</button>
+            <button type="submit" class="px-5 py-2 rounded-lg text-sm font-bold bg-primary text-white hover:bg-blue-800">Save</button>
+          </div>
+        </form>`;
+    };
+
+    window.editBlogCategory = (id = null) => {
+      const c = id ? currentBlogCategoriesList.find(x => x.id === id) : {};
+      CRUD.show(id ? 'Edit Category' : 'Add Category', renderBlogCategoryForm(c));
+    };
+
+    window.saveBlogCategory = async function(e, id) {
+        e.preventDefault();
+        const btn = e.target.querySelector('button[type="submit"]');
+        const og = btn.textContent; btn.textContent = 'Saving...'; btn.disabled = true;
+        const name = document.getElementById('bc-name').value;
+        const slug = document.getElementById('bc-slug').value;
+        const r = id ? await API.put('/admin.php?resource=blog_categories&action=update&id='+id, {name, slug}) : await API.post('/admin.php?resource=blog_categories&action=create', {name, slug});
+        btn.textContent = og; btn.disabled = false;
+        if(r?.success) {
+            Utils.toast('Saved!');
+            CRUD.close();
+            loadBlogs('categories');
+        } else {
+            Utils.toast(r?.message || 'Error', 'error');
+        }
+    };
+
+    window.createBlogCategory = async () => {
+        const name = prompt("Enter new Category Name:");
+        if (!name) { document.getElementById('b-cat').value = ''; return; }
+        const r = await API.post('/admin.php?resource=blog_categories&action=create', { name, slug: name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)+/g,'') });
+        if (r.success) {
+            Utils.toast('Category created!');
+            globals.categories = (await API.blogs.categories()).data || [];
+            document.getElementById('b-cat').innerHTML = `<option value="">Select Category</option>${window.buildSel(globals.categories, r.data.id)}<option disabled></option><option value="new" class="font-bold text-primary">+ Create New Category...</option>`;
+        } else {
+            Utils.toast(r.message || 'Failed', 'error');
+            document.getElementById('b-cat').value = '';
+        }
     };
     // saveBlog is now in cms-forms.js
 
@@ -860,18 +948,18 @@ echo renderLogo('full', '');
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                             ${(cat === 'placeholders'
-          ? groups[cat].filter(s => ['placeholder_blog_image', 'placeholder_destination_image', 'placeholder_trip_cover_image', 'placeholder_trip_map_image', 'placeholder_trip_gallery_image'].includes(s.s_key))
+          ? groups[cat].filter(s => ['placeholder_blog', 'placeholder_destination', 'placeholder_trip_cover', 'placeholder_trip_map', 'placeholder_trip_gallery'].includes(s.s_key))
           : groups[cat]).map(s => {
             const isToggle = s.s_key.includes('enabled');
             const isSecret = s.s_key.includes('secret') || s.s_key.includes('key');
             const isTextarea = s.s_key === 'site_icon_svg' || s.s_key.includes('address');
             const isImage = !isTextarea && (s.s_key.includes('placeholder') || s.s_key.includes('logo') || s.s_key.includes('icon'));
             const labelMap = {
-              'placeholder_blog_image': '1. Blog Image Thumbnail',
-              'placeholder_destination_image': '2. Destination Image',
-              'placeholder_trip_cover_image': '3. Trip Cover Image',
-              'placeholder_trip_map_image': '4. Trip Map Image',
-              'placeholder_trip_gallery_image': '5. Trip Gallery Image',
+              'placeholder_blog': '1. Blog Image Thumbnail',
+              'placeholder_destination': '2. Destination Image',
+              'placeholder_trip_cover': '3. Trip Cover Image',
+              'placeholder_trip_map': '4. Trip Map Image',
+              'placeholder_trip_gallery': '5. Trip Gallery Image',
               'site_icon_svg': 'Brand Icon SVG (Manual Code)'
             };
             const label = labelMap[s.s_key] || s.s_key.replace(/_/g, ' ').replace('payment ', '').replace('placeholder ', '');
@@ -883,7 +971,7 @@ echo renderLogo('full', '');
               const base = window.APP_CONFIG?.BASE_URL || window.location.origin + '/IBCCTRIP'; // Default to /IBCCTRIP if APP_CONFIG.BASE_URL is not set
               return base.replace(/\/$/, '') + '/' + url.replace(/^\//, '');
             };
-            const imgUrl = getImgUrl(s.s_value);
+            const imgUrl = getImgUrl(s.s_value) ? getImgUrl(s.s_value) + '?t=' + new Date().getTime() : '';
 
             return `
                                     <div class="${isToggle || isImage ? 'flex items-center justify-between bg-gray-50/50 p-4 rounded-2xl border border-gray-100' : ''} ${isImage ? 'col-span-2' : ''}">

@@ -38,11 +38,13 @@ $related       = $trip['related']       ?? [];
 $related_blogs = $trip['related_blogs'] ?? [];
 
 // Dynamic meta
-$pageTitle   = $trip['title'] ?? 'Trip Detail';
-$pageDesc    = $trip['meta_description'] ?: ($trip['short_description'] ?: 'Book ' . $pageTitle . ' with IBCC Trip.');
-$ogImage     = $trip['cover_image'] ?? '';
-$activePage  = 'trips';
-$transparent = true;
+$pageTitle    = !empty($trip['meta_title']) ? $trip['meta_title'] : ($trip['title'] ?? 'Trip Detail');
+$pageDesc     = $trip['meta_description'] ?: ($trip['short_description'] ?: 'Book ' . $pageTitle . ' with IBCC Trip.');
+$pageKeywords = $trip['meta_keywords'] ?? '';
+$exactTitle   = !empty($trip['meta_title']);
+$ogImage      = $trip['cover_image'] ?? '';
+$activePage   = 'trips';
+$transparent  = true;
 
 require_once __DIR__ . '/layouts/head.php';
 require_once __DIR__ . '/layouts/header.php';
@@ -125,8 +127,8 @@ require_once __DIR__ . '/layouts/header.php';
       <div id="panel-overview" class="tab-panel">
         <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-5">
           <h2 class="text-xl font-extrabold text-gray-900 mb-4">About This Trip</h2>
-          <div class="text-gray-600 leading-relaxed text-sm">
-            <?= nl2br(e($trip['description'] ?? 'No description available.')) ?>
+          <div class="quill-content text-gray-600 leading-relaxed text-sm">
+            <?= $trip['description'] ?? 'No description available.' ?>
           </div>
         </div>
         <?php if (!empty($trip['highlights'])): ?>

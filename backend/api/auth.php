@@ -71,7 +71,7 @@ try {
 
             if (!$email || !$pass) ResponseHelper::error('Email and password are required');
 
-            $stmt = $pdo->prepare("SELECT id, full_name, email, password, role, is_active FROM users WHERE email = ?");
+            $stmt = $pdo->prepare("SELECT id, full_name, email, phone, password, role, is_active FROM users WHERE email = ?");
             $stmt->execute([$email]);
             $user = $stmt->fetch();
 
@@ -116,7 +116,17 @@ try {
             }
 
             if (!empty($_SESSION['user_id'])) {
-                    ResponseHelper::success([
+                // Ensure session contains fresh DB data
+                $stmtAuth = $pdo->prepare("SELECT full_name, email, phone, role FROM users WHERE id = ?");
+                $stmtAuth->execute([$_SESSION['user_id']]);
+                if ($fresh = $stmtAuth->fetch(PDO::FETCH_ASSOC)) {
+                    $_SESSION['user_name']  = $fresh['full_name'];
+                    $_SESSION['user_email'] = $fresh['email'];
+                    $_SESSION['user_phone'] = $fresh['phone'] ?? '';
+                    $_SESSION['user_role']  = $fresh['role'];
+                }
+
+                ResponseHelper::success([
                         'logged_in' => true,
                         'user_id'   => $_SESSION['user_id'],
                         'name'      => $_SESSION['user_name'],

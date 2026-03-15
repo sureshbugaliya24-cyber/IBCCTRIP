@@ -11,7 +11,7 @@ if (!function_exists('formatDate')) require_once __DIR__ . '/helpers.php';
 function renderBlogCard(array $blog, string $size = 'normal'): void {
     $slug     = e($blog['slug'] ?? '');
     $title    = e($blog['title'] ?? 'Blog Post');
-    $excerpt  = e($blog['excerpt'] ?? '');
+    $excerpt  = e(strip_tags($blog['excerpt'] ?? ''));
     $author   = e($blog['author'] ?? 'IBCC Trip Team');
     $catName  = e($blog['category_name'] ?? '');
     $catSlug  = e($blog['category_slug']  ?? '');

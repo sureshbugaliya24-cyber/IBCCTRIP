@@ -11,11 +11,17 @@ function renderGallerySection($limit = 8) {
         $images = [];
     }
     
-    // Fallback images if gallery is empty
+    // Show empty state message if gallery is empty
     if (empty($images)) {
-        for ($i=1; $i<=$limit; $i++) {
-            $images[] = ['image_url' => 'https://images.unsplash.com/photo-15' . (800000000000 + $i*100000) . '?auto=format&fit=crop&w=800&q=60', 'category' => 'Destinations'];
-        }
+        return '
+        <section class="py-24 px-4 bg-white overflow-hidden">
+            <div class="max-w-7xl mx-auto space-y-8 text-center">
+                <span class="inline-block px-4 py-2 rounded-full bg-secondary/10 text-secondary text-[10px] font-black uppercase tracking-widest">Moments Captured</span>
+                <h2 class="text-3xl md:text-5xl font-black text-gray-900 uppercase tracking-tight">Gallery is being updated</h2>
+                <p class="text-gray-500 font-medium">Check back soon for new travel inspirations.</p>
+                <div class="w-24 h-1.5 bg-primary mx-auto rounded-full mt-8"></div>
+            </div>
+        </section>';
     }
 
     $html = '

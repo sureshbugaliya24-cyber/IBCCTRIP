@@ -52,7 +52,11 @@ $states = $country['states'] ?? [];
 $trips = $country['trips'] ?? [];
 $blogs = $country['blogs'] ?? [];
 
-$pageTitle = $country['name'] ?? 'Country';
+$pageTitle = !empty($country['meta_title']) ? $country['meta_title'] : ($country['name'] ?? 'Country');
+$pageDesc = $country['meta_description'] ?? '';
+$pageKeywords = $country['meta_keywords'] ?? '';
+$exactTitle = !empty($country['meta_title']);
+
 $activePage = 'destinations';
 $transparent = true;
 
@@ -62,7 +66,7 @@ require_once __DIR__ . '/layouts/header.php';
 
 <!-- Hero -->
 <div class="relative h-[60vh] min-h-[400px] overflow-hidden">
-  <img src="<?= e($country['featured_image'] ?? '')?>" class="w-full h-full object-cover">
+  <img src="<?= img_url($country['featured_image'] ?? null, 'destination') ?>" class="w-full h-full object-cover">
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
   <div class="absolute inset-0 flex flex-col justify-end pb-12 px-4 max-w-7xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
@@ -88,7 +92,9 @@ require_once __DIR__ . '/layouts/header.php';
         <h2 class="text-2xl font-extrabold text-gray-900 mb-6">About
           <?= e($country['name'] ?? '')?>
         </h2>
-        <?= nl2br(e($country['description'] ?? ''))?>
+        <div class="quill-content">
+            <?= $country['description'] ?? '' ?>
+        </div>
       </div>
 
       <!-- States / Regions -->

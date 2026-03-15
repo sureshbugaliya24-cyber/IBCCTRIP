@@ -9,8 +9,8 @@ function renderCityCard(array $c): void {
     $name      = e($c['name'] ?? 'City');
     $slug      = e($c['slug'] ?? '');
     $stateName = e($c['state_name'] ?? '');
-    $img       = img_url($c['featured_image'] ?? null, 'city');
-    $desc      = e($c['description'] ?? '');
+    $img       = img_url($c['featured_image'] ?? null, 'destination');
+    $desc      = e(strip_tags($c['description'] ?? ''));
     $url       = FRONTEND_URL . '/city/' . urlencode($c['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"
@@ -38,8 +38,8 @@ function renderCityCard(array $c): void {
 function renderStateCard(array $s): void {
     $name        = e($s['name'] ?? 'State');
     $countryName = e($s['country_name'] ?? '');
-    $img         = img_url($s['featured_image'] ?? null, 'city');
-    $desc        = e($s['description'] ?? '');
+    $img         = img_url($s['featured_image'] ?? null, 'destination');
+    $desc        = e(strip_tags($s['description'] ?? ''));
     $url         = FRONTEND_URL . '/state/' . urlencode($s['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"
@@ -65,8 +65,8 @@ function renderStateCard(array $s): void {
 function renderPlaceCard(array $p): void {
     $name     = e($p['name'] ?? 'Place');
     $cityName = e($p['city_name'] ?? '');
-    $img      = img_url($p['featured_image'] ?? null, 'city');
-    $desc     = e($p['description'] ?? '');
+    $img      = img_url($p['featured_image'] ?? null, 'destination');
+    $desc     = e(strip_tags($p['description'] ?? ''));
     $url      = FRONTEND_URL . '/place/' . urlencode($p['slug'] ?? '');
     ?>
 <a href="<?= $url ?>"

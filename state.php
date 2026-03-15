@@ -45,7 +45,11 @@ $state = $resp['data'] ?? [];
 $cities = $state['cities'] ?? [];
 $trips  = $state['trips']  ?? [];
 
-$pageTitle = $state['name'] ?? 'State';
+$pageTitle = !empty($state['meta_title']) ? $state['meta_title'] : ($state['name'] ?? 'State');
+$pageDesc = $state['meta_description'] ?? '';
+$pageKeywords = $state['meta_keywords'] ?? '';
+$exactTitle = !empty($state['meta_title']);
+
 $activePage = 'destinations';
 $transparent = true;
 
@@ -54,7 +58,7 @@ require_once __DIR__ . '/layouts/header.php';
 ?>
 
 <div class="relative h-[55vh] min-h-[350px] overflow-hidden">
-  <img src="<?= e($state['featured_image'] ?? '') ?>" class="w-full h-full object-cover">
+  <img src="<?= img_url($state['featured_image'] ?? null, 'destination') ?>" class="w-full h-full object-cover">
   <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent"></div>
   <div class="absolute inset-0 flex flex-col justify-end pb-12 px-4 max-w-7xl mx-auto left-0 right-0">
     <?php renderBreadcrumb([
@@ -73,7 +77,9 @@ require_once __DIR__ . '/layouts/header.php';
     <div class="flex-1 min-w-0">
       <div class="text-gray-600 leading-relaxed mb-16 max-w-3xl">
         <h2 class="text-2xl font-extrabold text-gray-900 mb-6">Explore <?= e($state['name'] ?? '') ?></h2>
-        <?= nl2br(e($state['description'] ?? '')) ?>
+        <div class="quill-content">
+            <?= $state['description'] ?? '' ?>
+        </div>
       </div>
 
       <?php if (count($cities) > 0): ?>

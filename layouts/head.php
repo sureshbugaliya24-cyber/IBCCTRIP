@@ -20,7 +20,8 @@ $ogImage = $ogImage ?? 'https://images.unsplash.com/photo-1506929562872-bb421503
 $canonicalPath = $canonicalPath ?? '';
 
 $siteFullName = (defined('SITE_NAME_PART1') ? SITE_NAME_PART1 : 'IBCC') . ' ' . (defined('SITE_NAME_PART2') ? SITE_NAME_PART2 : 'Trip');
-$fullTitle = ($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . $siteFullName : $siteFullName . ' — ' . APP_TAGLINE;
+$exactTitle = $exactTitle ?? false;
+$fullTitle = $exactTitle ? $pageTitle : (($pageTitle !== APP_NAME) ? $pageTitle . ' | ' . $siteFullName : $siteFullName . ' — ' . APP_TAGLINE);
 ?>
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
